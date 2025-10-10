@@ -68,6 +68,10 @@ export default function NewSales() {
 
   const { data: saleItems = [] } = useQuery<SaleItem[]>({
     queryKey: ["/api/sales", viewingSaleId, "items"],
+    queryFn: async () => {
+      const response = await fetch(`/api/sales/${viewingSaleId}/items`);
+      return response.json();
+    },
     enabled: !!viewingSaleId,
   });
 
