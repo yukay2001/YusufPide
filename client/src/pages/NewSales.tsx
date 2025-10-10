@@ -16,13 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import DataTable from "@/components/DataTable";
 import DateFilter from "@/components/DateFilter";
-
-interface Product {
-  id: string;
-  name: string;
-  price: string;
-  category: string | null;
-}
+import type { Product, Category } from "@shared/schema";
 
 interface CartItem {
   productId: string;
@@ -54,9 +48,15 @@ export default function NewSales() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [customerPayment, setCustomerPayment] = useState("");
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
+  });
+
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
   });
 
   const { data: sales = [], isLoading } = useQuery<Sale[]>({
@@ -134,10 +134,35 @@ export default function NewSales() {
   };
 
   const removeFromCart = (productId: string) => {
-    setCart(cart.filter((item) => item.productId !== productId));
+    const newCart = cart.filter((item) => item.productId !== productId);
+    setCart(newCart);
+    if (newCart.length === 0) {
+      setCustomerPayment("");
+    }
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + item.total, 0);
+  const change = customerPayment ? Number(customerPayment) - cartTotal : 0;
+
+  // Filter products by selected category
+  const filteredProducts = selectedCategoryId
+    ? products.filter(p => p.categoryId === selectedCategoryId)
+    : products;
+
+  // Clear selected product if it's not in filtered products
+  const handleCategoryChange = (categoryId: string | null) => {
+    setSelectedCategoryId(categoryId);
+    // If current product is not in the new filtered list, clear selection
+    if (selectedProductId) {
+      const newFilteredProducts = categoryId
+        ? products.filter(p => p.categoryId === categoryId)
+        : products;
+      const productExists = newFilteredProducts.some(p => p.id === selectedProductId);
+      if (!productExists) {
+        setSelectedProductId("");
+      }
+    }
+  };
 
   const handleCompleteSale = () => {
     if (cart.length === 0) {
@@ -145,6 +170,7 @@ export default function NewSales() {
       return;
     }
     createSaleMutation.mutate(cart);
+    setCustomerPayment("");
   };
 
   const salesColumns = [
@@ -178,6 +204,34 @@ export default function NewSales() {
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Yeni Satış</h3>
+        
+        {categories.length > 0 && (
+          <div className="mb-4">
+            <Label className="mb-2 block">Kategori Filtresi</Label>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={selectedCategoryId === null ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleCategoryChange(null)}
+                data-testid="button-category-all"
+              >
+                Tümü
+              </Button>
+              {categories.map((category) => (
+                <Button
+                  key={category.id}
+                  variant={selectedCategoryId === category.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleCategoryChange(category.id)}
+                  data-testid={`button-category-${category.id}`}
+                >
+                  {category.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
           <div className="md:col-span-2">
             <Label htmlFor="product-select">Ürün</Label>
@@ -186,7 +240,7 @@ export default function NewSales() {
                 <SelectValue placeholder="Ürün seçin" />
               </SelectTrigger>
               <SelectContent>
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <SelectItem key={product.id} value={product.id}>
                     {product.name} - {product.price} ₺
                   </SelectItem>
@@ -243,16 +297,43 @@ export default function NewSales() {
                 </div>
               ))}
             </div>
-            <div className="border-t pt-4 flex items-center justify-between">
-              <p className="text-xl font-bold">Toplam: {cartTotal.toFixed(2)} ₺</p>
-              <Button
-                onClick={handleCompleteSale}
-                size="lg"
-                data-testid="button-complete-sale"
-              >
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                Satışı Tamamla
-              </Button>
+            <div className="border-t pt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-xl font-bold mb-3">Toplam: {cartTotal.toFixed(2)} ₺</p>
+                  <div className="grid grid-cols-2 gap-3 max-w-md">
+                    <div>
+                      <Label htmlFor="customer-payment" className="text-sm">Müşteri Ödeme (₺)</Label>
+                      <Input
+                        id="customer-payment"
+                        data-testid="input-customer-payment"
+                        type="number"
+                        value={customerPayment}
+                        onChange={(e) => setCustomerPayment(e.target.value)}
+                        placeholder="600"
+                        step="0.01"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Para Üstü</Label>
+                      <div className="mt-1 p-2 bg-muted rounded-md flex items-center h-9" data-testid="text-change">
+                        <p className="font-bold text-lg">
+                          {change >= 0 ? change.toFixed(2) : "0.00"} ₺
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  onClick={handleCompleteSale}
+                  size="lg"
+                  data-testid="button-complete-sale"
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Satışı Tamamla
+                </Button>
+              </div>
             </div>
           </>
         )}
