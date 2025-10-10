@@ -53,6 +53,9 @@ export const stock = pgTable("stock", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
   quantity: integer("quantity").notNull().default(0),
+  price: decimal("price", { precision: 10, scale: 2 }),
+  categoryId: varchar("category_id").references(() => categories.id),
+  alertThreshold: integer("alert_threshold").default(0),
 });
 
 // Insert schemas

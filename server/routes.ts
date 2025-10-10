@@ -243,6 +243,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         saleItems
       );
       
+      // Automatically deduct stock based on product name
+      for (const saleItem of saleItems) {
+        await storage.deductStockByName(saleItem.productName, saleItem.quantity);
+      }
+      
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {

@@ -57,6 +57,7 @@ export interface IStorage {
   createOrUpdateStock(stock: InsertStock): Promise<Stock>;
   updateStock(id: string, update: Partial<InsertStock>): Promise<Stock | undefined>;
   updateStockQuantity(name: string, quantityChange: number): Promise<Stock | undefined>;
+  deductStockByName(name: string, quantity: number): Promise<Stock | undefined>;
   deleteStock(id: string): Promise<boolean>;
 }
 
@@ -401,7 +402,10 @@ export class MemStorage implements IStorage {
     if (existing) {
       const updated: Stock = { 
         ...existing, 
-        quantity: existing.quantity + quantity
+        quantity: existing.quantity + quantity,
+        ...(insertStock.price !== undefined && { price: insertStock.price }),
+        ...(insertStock.categoryId !== undefined && { categoryId: insertStock.categoryId }),
+        ...(insertStock.alertThreshold !== undefined && { alertThreshold: insertStock.alertThreshold })
       };
       this.stock.set(existing.id, updated);
       return updated;
@@ -411,7 +415,10 @@ export class MemStorage implements IStorage {
     const stock: Stock = { 
       id, 
       name: insertStock.name,
-      quantity
+      quantity,
+      price: insertStock.price ?? null,
+      categoryId: insertStock.categoryId ?? null,
+      alertThreshold: insertStock.alertThreshold ?? null
     };
     this.stock.set(id, stock);
     return stock;
@@ -433,6 +440,18 @@ export class MemStorage implements IStorage {
     const updated: Stock = { 
       ...stock, 
       quantity: stock.quantity + quantityChange 
+    };
+    this.stock.set(stock.id, updated);
+    return updated;
+  }
+
+  async deductStockByName(name: string, quantity: number): Promise<Stock | undefined> {
+    const stock = await this.getStockByName(name);
+    if (!stock) return undefined;
+    
+    const updated: Stock = { 
+      ...stock, 
+      quantity: Math.max(0, stock.quantity - quantity)
     };
     this.stock.set(stock.id, updated);
     return updated;
