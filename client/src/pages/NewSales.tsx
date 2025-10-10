@@ -85,6 +85,22 @@ export default function NewSales() {
       toast({ title: "Satış kaydedildi" });
       setCart([]);
     },
+    onError: () => {
+      toast({ title: "Satış kaydedilemedi", variant: "destructive" });
+    },
+  });
+
+  const deleteSaleMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/sales/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      toast({ title: "Satış silindi" });
+    },
+    onError: () => {
+      toast({ title: "Silme başarısız", variant: "destructive" });
+    },
   });
 
   const addToCart = () => {
@@ -134,9 +150,24 @@ export default function NewSales() {
   const salesColumns = [
     { header: "Tarih", accessor: "date", align: "left" as const },
     { header: "Toplam (₺)", accessor: "total", align: "right" as const },
+    {
+      header: "İşlem",
+      align: "center" as const,
+      render: (sale: Sale) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => deleteSaleMutation.mutate(sale.id)}
+          data-testid={`button-delete-sale-${sale.id}`}
+        >
+          <Trash2 className="w-4 h-4 text-destructive" />
+        </Button>
+      ),
+    },
   ];
 
   const formattedSales = sales.map(sale => ({
+    ...sale,
     date: new Date(sale.date).toLocaleString('tr-TR'),
     total: Number(sale.total).toFixed(2),
   }));

@@ -135,6 +135,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/sales/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteSale(id);
+      if (!deleted) {
+        res.status(404).json({ error: "Sale not found" });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete sale" });
+    }
+  });
+
   // Expenses
   app.get("/api/expenses", async (req, res) => {
     try {
@@ -198,6 +212,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ error: "Failed to create/update stock" });
       }
+    }
+  });
+
+  app.put("/api/stock/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const update = insertStockSchema.parse(req.body);
+      
+      // Validate quantity
+      if (update.quantity !== undefined && update.quantity < 0) {
+        res.status(400).json({ error: "Quantity cannot be negative" });
+        return;
+      }
+      
+      const updated = await storage.updateStock(id, update);
+      if (!updated) {
+        res.status(404).json({ error: "Stock not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update stock" });
+      }
+    }
+  });
+
+  app.delete("/api/stock/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteStock(id);
+      if (!deleted) {
+        res.status(404).json({ error: "Stock not found" });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete stock" });
     }
   });
 

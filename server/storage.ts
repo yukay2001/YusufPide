@@ -20,6 +20,7 @@ export interface IStorage {
   getSale(id: string): Promise<Sale | undefined>;
   createSale(sale: InsertSale, items: InsertSaleItem[]): Promise<{ sale: Sale; items: SaleItem[] }>;
   getSaleItems(saleId: string): Promise<SaleItem[]>;
+  deleteSale(id: string): Promise<boolean>;
 
   // Expenses
   getExpenses(dateFrom?: Date, dateTo?: Date): Promise<Expense[]>;
@@ -30,8 +31,11 @@ export interface IStorage {
   // Stock
   getStock(): Promise<Stock[]>;
   getStockByName(name: string): Promise<Stock | undefined>;
+  getStockItem(id: string): Promise<Stock | undefined>;
   createOrUpdateStock(stock: InsertStock): Promise<Stock>;
+  updateStock(id: string, update: Partial<InsertStock>): Promise<Stock | undefined>;
   updateStockQuantity(name: string, quantityChange: number): Promise<Stock | undefined>;
+  deleteStock(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -134,6 +138,14 @@ export class MemStorage implements IStorage {
     return Array.from(this.saleItems.values()).filter(item => item.saleId === saleId);
   }
 
+  async deleteSale(id: string): Promise<boolean> {
+    // Delete sale items first
+    const items = await this.getSaleItems(id);
+    items.forEach(item => this.saleItems.delete(item.id));
+    // Delete the sale
+    return this.sales.delete(id);
+  }
+
   // Expenses
   async getExpenses(dateFrom?: Date, dateTo?: Date): Promise<Expense[]> {
     let expenses = Array.from(this.expenses.values());
@@ -178,6 +190,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.stock.values()).find(s => s.name === name);
   }
 
+  async getStockItem(id: string): Promise<Stock | undefined> {
+    return this.stock.get(id);
+  }
+
   async createOrUpdateStock(insertStock: InsertStock): Promise<Stock> {
     const existing = await this.getStockByName(insertStock.name);
     const quantity = insertStock.quantity ?? 0;
@@ -201,6 +217,15 @@ export class MemStorage implements IStorage {
     return stock;
   }
 
+  async updateStock(id: string, update: Partial<InsertStock>): Promise<Stock | undefined> {
+    const stock = this.stock.get(id);
+    if (!stock) return undefined;
+    
+    const updated: Stock = { ...stock, ...update };
+    this.stock.set(id, updated);
+    return updated;
+  }
+
   async updateStockQuantity(name: string, quantityChange: number): Promise<Stock | undefined> {
     const stock = await this.getStockByName(name);
     if (!stock) return undefined;
@@ -211,6 +236,10 @@ export class MemStorage implements IStorage {
     };
     this.stock.set(stock.id, updated);
     return updated;
+  }
+
+  async deleteStock(id: string): Promise<boolean> {
+    return this.stock.delete(id);
   }
 }
 

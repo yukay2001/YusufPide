@@ -1,9 +1,11 @@
 import { Card } from "@/components/ui/card";
+import { ReactNode } from "react";
 
 interface Column {
   header: string;
-  accessor: string;
+  accessor?: string;
   align?: "left" | "center" | "right";
+  render?: (row: any, index: number) => ReactNode;
 }
 
 interface DataTableProps {
@@ -60,7 +62,7 @@ export default function DataTable({ columns, data, emptyMessage = "Henüz veri y
                         "text-left"
                       }`}
                     >
-                      {row[col.accessor]}
+                      {col.render ? col.render(row, rowIdx) : row[col.accessor || ""]}
                     </td>
                   ))}
                 </tr>

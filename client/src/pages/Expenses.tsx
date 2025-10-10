@@ -4,6 +4,9 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import ExpenseForm from "@/components/ExpenseForm";
 import DataTable from "@/components/DataTable";
 import DateFilter from "@/components/DateFilter";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Expense {
   id: string;
@@ -13,6 +16,7 @@ interface Expense {
 }
 
 export default function Expenses() {
+  const { toast } = useToast();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -34,6 +38,23 @@ export default function Expenses() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      toast({ title: "Gider eklendi" });
+    },
+    onError: () => {
+      toast({ title: "Gider eklenemedi", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/expenses/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      toast({ title: "Gider silindi" });
+    },
+    onError: () => {
+      toast({ title: "Silme başarısız", variant: "destructive" });
     },
   });
 
@@ -41,9 +62,24 @@ export default function Expenses() {
     { header: "Tarih", accessor: "date", align: "left" as const },
     { header: "Kategori", accessor: "category", align: "left" as const },
     { header: "Tutar (₺)", accessor: "amount", align: "right" as const },
+    {
+      header: "İşlem",
+      align: "center" as const,
+      render: (expense: Expense) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => deleteMutation.mutate(expense.id)}
+          data-testid={`button-delete-expense-${expense.id}`}
+        >
+          <Trash2 className="w-4 h-4 text-destructive" />
+        </Button>
+      ),
+    },
   ];
 
   const formattedExpenses = expenses.map(expense => ({
+    ...expense,
     date: new Date(expense.date).toLocaleString('tr-TR'),
     category: expense.category,
     amount: Number(expense.amount).toFixed(2),
