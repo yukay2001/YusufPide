@@ -57,6 +57,7 @@ export interface IStorage {
   createOrUpdateStock(stock: InsertStock): Promise<Stock>;
   updateStock(id: string, update: Partial<InsertStock>): Promise<Stock | undefined>;
   updateStockQuantity(name: string, quantityChange: number): Promise<Stock | undefined>;
+  updateStockQuantityById(id: string, quantityChange: number): Promise<Stock | undefined>;
   deductStockByName(name: string, quantity: number): Promise<Stock | undefined>;
   deleteStock(id: string): Promise<boolean>;
 }
@@ -436,6 +437,18 @@ export class MemStorage implements IStorage {
 
   async updateStockQuantity(name: string, quantityChange: number): Promise<Stock | undefined> {
     const stock = await this.getStockByName(name);
+    if (!stock) return undefined;
+    
+    const updated: Stock = { 
+      ...stock, 
+      quantity: stock.quantity + quantityChange 
+    };
+    this.stock.set(stock.id, updated);
+    return updated;
+  }
+
+  async updateStockQuantityById(id: string, quantityChange: number): Promise<Stock | undefined> {
+    const stock = this.stock.get(id);
     if (!stock) return undefined;
     
     const updated: Stock = { 
