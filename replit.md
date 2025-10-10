@@ -27,7 +27,16 @@ Preferred communication style: Simple, everyday language.
 - Products page includes dropdown to select which stock item (if any) each product uses
 - When a sale is made, stock automatically decreases from the linked stock item
 - Products can be set to "Stok kullanmıyor" (no stock) to opt out of stock tracking
-- Stock deduction logic uses stockItemId foreign key instead of name matching
+- Stock deduction logic uses ID-based lookup (updateStockQuantityById) for reliability
+- Improved from name-based to ID-based deduction for better performance and robustness
+
+**Stock Alert & Notification System (Latest):**
+- Added alert threshold field to stock items - users can set custom low-stock thresholds
+- Real-time notification panel in header shows items below alert threshold
+- Bell icon with badge count displays number of low stock alerts
+- Notification panel auto-refreshes every 30 seconds
+- Stock page shows visual warnings when items fall below threshold
+- GET /api/stock/alerts endpoint filters stock items requiring attention
 
 ## System Architecture
 
