@@ -130,7 +130,7 @@ export default function Stock() {
       data.price = formData.price;
     }
     
-    if (formData.categoryId) {
+    if (formData.categoryId && formData.categoryId !== "none") {
       data.categoryId = formData.categoryId;
     }
     
@@ -297,7 +297,7 @@ export default function Stock() {
                   <SelectValue placeholder="Kategori seçin" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Kategori Yok</SelectItem>
+                  <SelectItem value="none">Kategori Yok</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
