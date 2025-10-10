@@ -253,11 +253,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Automatically deduct stock based on product-stock mapping
       for (const item of items) {
         const product = await storage.getProduct(item.productId);
+        console.log(`[Stock Deduction] Product: ${product?.name}, stockItemId: ${product?.stockItemId}`);
+        
         if (product && product.stockItemId) {
           const stockItem = await storage.getStockItem(product.stockItemId);
+          console.log(`[Stock Deduction] Found stock item: ${stockItem?.name}, current quantity: ${stockItem?.quantity}`);
+          
           if (stockItem) {
-            await storage.updateStockQuantity(stockItem.name, -item.quantity);
+            const updated = await storage.updateStockQuantity(stockItem.name, -item.quantity);
+            console.log(`[Stock Deduction] Updated ${stockItem.name}: ${stockItem.quantity} -> ${updated?.quantity} (deducted ${item.quantity})`);
           }
+        } else {
+          console.log(`[Stock Deduction] No stock linked for product: ${product?.name}`);
         }
       }
       
@@ -475,6 +482,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete stock" });
+    }
+  });
+
+  app.get("/api/stock/alerts", async (_req, res) => {
+    try {
+      const stock = await storage.getStock();
+      const alerts = stock.filter(item => {
+        if (item.alertThreshold === null || item.alertThreshold === undefined) {
+          return false;
+        }
+        return item.quantity <= item.alertThreshold;
+      });
+      res.json(alerts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch stock alerts" });
     }
   });
 

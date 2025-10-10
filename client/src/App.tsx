@@ -12,6 +12,7 @@ import Stock from "@/pages/Stock";
 import Reports from "@/pages/Reports";
 import ThemeToggle from "@/components/ThemeToggle";
 import SessionSelector from "@/components/SessionSelector";
+import StockAlertNotifications from "@/components/StockAlertNotifications";
 import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon } from "lucide-react";
 
 function Router() {
@@ -50,6 +51,7 @@ function App() {
                 <h1 className="text-2xl font-bold">Pideci Yönetim Paneli</h1>
                 <div className="flex items-center gap-4 flex-wrap">
                   <SessionSelector />
+                  <StockAlertNotifications />
                   <ThemeToggle />
                 </div>
               </div>
