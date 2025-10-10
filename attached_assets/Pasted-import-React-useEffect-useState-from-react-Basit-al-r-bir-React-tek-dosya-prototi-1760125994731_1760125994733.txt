@@ -1,0 +1,333 @@
+import React, { useEffect, useState } from "react";
+
+// Basit, çalışır bir React tek dosya prototipi.
+// Nasıl kullanılır (özet):
+// 1) Create React App veya Vite ile React projesi oluştur.
+// 2) Tailwind kur (isteğe bağlı) veya basit stillerle kullan.
+// 3) Bu dosyayı src/App.jsx yerine yapıştırıp çalıştır.
+
+export default function PideciPanel() {
+  // LocalStorage anahtarları
+  const LS_SALES = "pide_satis";
+  const LS_EXPENSES = "pide_gider";
+  const LS_STOCK = "pide_stok";
+
+  // State'ler
+  const [sales, setSales] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [stock, setStock] = useState([]);
+  const [view, setView] = useState("dashboard");
+  const [productName, setProductName] = useState("");
+  const [productPrice, setProductPrice] = useState(0);
+  const [productQty, setProductQty] = useState(1);
+  const [expenseCategory, setExpenseCategory] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState(0);
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+
+  // Load from localStorage
+  useEffect(() => {
+    const s = JSON.parse(localStorage.getItem(LS_SALES) || "[]");
+    const e = JSON.parse(localStorage.getItem(LS_EXPENSES) || "[]");
+    const st = JSON.parse(localStorage.getItem(LS_STOCK) || "[]");
+    setSales(s);
+    setExpenses(e);
+    setStock(st);
+  }, []);
+
+  // Persist
+  useEffect(() => {
+    localStorage.setItem(LS_SALES, JSON.stringify(sales));
+  }, [sales]);
+  useEffect(() => {
+    localStorage.setItem(LS_EXPENSES, JSON.stringify(expenses));
+  }, [expenses]);
+  useEffect(() => {
+    localStorage.setItem(LS_STOCK, JSON.stringify(stock));
+  }, [stock]);
+
+  // Helpers
+  const nowISO = () => new Date().toISOString();
+
+  function addSale() {
+    if (!productName || productQty <= 0 || productPrice <= 0) return;
+    const total = Number(productQty) * Number(productPrice);
+    const item = { id: Date.now(), date: nowISO(), productName, productQty: Number(productQty), productPrice: Number(productPrice), total };
+    setSales([item, ...sales]);
+
+    // stoktan düş
+    setStock(prev => {
+      const copy = [...prev];
+      const idx = copy.findIndex(x => x.name === productName);
+      if (idx >= 0) {
+        copy[idx].qty = Number(copy[idx].qty) - Number(productQty);
+      }
+      return copy;
+    });
+
+    // temizle
+    setProductName("");
+    setProductPrice(0);
+    setProductQty(1);
+  }
+
+  function addExpense() {
+    if (!expenseCategory || expenseAmount <= 0) return;
+    const item = { id: Date.now(), date: nowISO(), category: expenseCategory, amount: Number(expenseAmount) };
+    setExpenses([item, ...expenses]);
+    setExpenseCategory("");
+    setExpenseAmount(0);
+  }
+
+  function addStockItem(name, qty) {
+    if (!name || qty <= 0) return;
+    setStock(prev => {
+      const copy = [...prev];
+      const idx = copy.findIndex(x => x.name === name);
+      if (idx >= 0) {
+        copy[idx].qty = Number(copy[idx].qty) + Number(qty);
+      } else {
+        copy.unshift({ id: Date.now(), name, qty: Number(qty) });
+      }
+      return copy;
+    });
+  }
+
+  function filterByDate(items) {
+    if (!filterFrom && !filterTo) return items;
+    const from = filterFrom ? new Date(filterFrom) : null;
+    const to = filterTo ? new Date(filterTo) : null;
+    return items.filter(it => {
+      const d = new Date(it.date);
+      if (from && d < from) return false;
+      if (to && d > new Date(new Date(filterTo).getTime() + 24*60*60*1000 - 1)) return false; // include day
+      return true;
+    });
+  }
+
+  // Raporlamalar
+  const salesFiltered = filterByDate(sales);
+  const expensesFiltered = filterByDate(expenses);
+  const totalSales = salesFiltered.reduce((s, it) => s + Number(it.total), 0);
+  const totalExpenses = expensesFiltered.reduce((s, it) => s + Number(it.amount), 0);
+  const netProfit = totalSales - totalExpenses;
+
+  // CSV export
+  function exportCSV(items, filename) {
+    if (!items || !items.length) return;
+    const keys = Object.keys(items[0]);
+    const csv = [keys.join(","), ...items.map(r => keys.map(k => JSON.stringify(r[k] ?? "")).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+  }
+
+  // Basit stil: Tailwind sınıfları kullanıldı; Tailwind yoksa temel stil de çalışır.
+  return (
+    <div className="min-h-screen bg-slate-50 p-4 font-sans">
+      <header className="max-w-5xl mx-auto mb-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Pideci Yönetim Paneli</h1>
+          <div className="text-sm text-slate-600">Yusuf Kaya • Demo Prototip</div>
+        </div>
+        <nav className="mt-3 flex gap-2 flex-wrap">
+          <button onClick={() => setView("dashboard")} className="px-3 py-1 rounded bg-white shadow">Dashboard</button>
+          <button onClick={() => setView("sales")} className="px-3 py-1 rounded bg-white shadow">Satış</button>
+          <button onClick={() => setView("expenses")} className="px-3 py-1 rounded bg-white shadow">Gider</button>
+          <button onClick={() => setView("stock")} className="px-3 py-1 rounded bg-white shadow">Stok</button>
+          <button onClick={() => setView("reports")} className="px-3 py-1 rounded bg-white shadow">Rapor</button>
+        </nav>
+      </header>
+
+      <main className="max-w-5xl mx-auto bg-white p-4 rounded shadow">
+        {view === "dashboard" && (
+          <section>
+            <h2 className="text-xl font-semibold mb-3">Genel Bakış</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="p-3 border rounded">
+                <div className="text-sm text-slate-500">Toplam Satış</div>
+                <div className="text-2xl font-bold">{totalSales.toFixed(2)} ₺</div>
+              </div>
+              <div className="p-3 border rounded">
+                <div className="text-sm text-slate-500">Toplam Gider</div>
+                <div className="text-2xl font-bold">{totalExpenses.toFixed(2)} ₺</div>
+              </div>
+              <div className="p-3 border rounded">
+                <div className="text-sm text-slate-500">Net Kâr</div>
+                <div className="text-2xl font-bold">{netProfit.toFixed(2)} ₺</div>
+              </div>
+              <div className="p-3 border rounded">
+                <div className="text-sm text-slate-500">En Çok Satılan</div>
+                <div className="text-lg font-semibold">
+                  {sales.length ? Object.entries(sales.reduce((acc, it) => { acc[it.productName] = (acc[it.productName]||0) + it.productQty; return acc; }, {})).sort((a,b)=>b[1]-a[1])[0]?.[0] || '-' : '-'}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <h3 className="font-semibold mb-2">Kritik Stoklar</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                {stock.length ? stock.filter(s=>s.qty<5).map(s=> (
+                  <div key={s.id} className="p-2 border rounded">{s.name}: {s.qty}</div>
+                )) : <div className="text-slate-500">Stok verisi yok.</div>}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {view === "sales" && (
+          <section>
+            <h2 className="text-xl font-semibold mb-3">Satış Ekle</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+              <div>
+                <label className="text-sm">Ürün adı</label>
+                <input value={productName} onChange={e=>setProductName(e.target.value)} className="w-full p-2 border rounded" placeholder="Kıymalı" />
+              </div>
+              <div>
+                <label className="text-sm">Adet</label>
+                <input type="number" value={productQty} onChange={e=>setProductQty(e.target.value)} className="w-full p-2 border rounded" />
+              </div>
+              <div>
+                <label className="text-sm">Birim fiyat (₺)</label>
+                <input type="number" value={productPrice} onChange={e=>setProductPrice(e.target.value)} className="w-full p-2 border rounded" />
+              </div>
+              <div>
+                <button onClick={addSale} className="w-full p-2 bg-slate-800 text-white rounded">Satışı Kaydet</button>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <h3 className="font-semibold">Satış Listesi</h3>
+              <div className="flex gap-2 mt-2">
+                <input type="date" value={filterFrom} onChange={e=>setFilterFrom(e.target.value)} className="p-2 border rounded" />
+                <input type="date" value={filterTo} onChange={e=>setFilterTo(e.target.value)} className="p-2 border rounded" />
+                <button onClick={()=>{ setFilterFrom(""); setFilterTo(""); }} className="p-2 border rounded">Temizle</button>
+                <button onClick={()=>exportCSV(salesFiltered, 'sales.csv')} className="p-2 border rounded">CSV İndir</button>
+              </div>
+
+              <table className="w-full mt-3 text-sm border-collapse">
+                <thead>
+                  <tr className="border-b"><th className="text-left p-2">Tarih</th><th className="p-2">Ürün</th><th className="p-2">Adet</th><th className="p-2">Toplam (₺)</th></tr>
+                </thead>
+                <tbody>
+                  {salesFiltered.map(s=> (
+                    <tr key={s.id} className="border-b"><td className="p-2">{new Date(s.date).toLocaleString()}</td><td className="p-2">{s.productName}</td><td className="p-2">{s.productQty}</td><td className="p-2">{s.total.toFixed(2)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {view === "expenses" && (
+          <section>
+            <h2 className="text-xl font-semibold mb-3">Gider Ekle</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+              <div>
+                <label className="text-sm">Kategori</label>
+                <input value={expenseCategory} onChange={e=>setExpenseCategory(e.target.value)} className="w-full p-2 border rounded" placeholder="Elektrik / Un alımı" />
+              </div>
+              <div>
+                <label className="text-sm">Tutar (₺)</label>
+                <input type="number" value={expenseAmount} onChange={e=>setExpenseAmount(e.target.value)} className="w-full p-2 border rounded" />
+              </div>
+              <div>
+                <button onClick={addExpense} className="w-full p-2 bg-rose-600 text-white rounded">Gideri Kaydet</button>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <h3 className="font-semibold">Gider Listesi</h3>
+              <div className="flex gap-2 mt-2">
+                <input type="date" value={filterFrom} onChange={e=>setFilterFrom(e.target.value)} className="p-2 border rounded" />
+                <input type="date" value={filterTo} onChange={e=>setFilterTo(e.target.value)} className="p-2 border rounded" />
+                <button onClick={()=>{ setFilterFrom(""); setFilterTo(""); }} className="p-2 border rounded">Temizle</button>
+                <button onClick={()=>exportCSV(expensesFiltered, 'expenses.csv')} className="p-2 border rounded">CSV İndir</button>
+              </div>
+              <table className="w-full mt-3 text-sm border-collapse">
+                <thead>
+                  <tr className="border-b"><th className="text-left p-2">Tarih</th><th className="p-2">Kategori</th><th className="p-2">Tutar (₺)</th></tr>
+                </thead>
+                <tbody>
+                  {expensesFiltered.map(e=> (
+                    <tr key={e.id} className="border-b"><td className="p-2">{new Date(e.date).toLocaleString()}</td><td className="p-2">{e.category}</td><td className="p-2">{e.amount.toFixed(2)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {view === "stock" && (
+          <section>
+            <h2 className="text-xl font-semibold mb-3">Stok Yönetimi</h2>
+            <AddStockForm onAdd={(n,q)=>addStockItem(n,q)} />
+            <div className="mt-4">
+              <h3 className="font-semibold">Stok Listesi</h3>
+              <table className="w-full mt-3 text-sm border-collapse">
+                <thead>
+                  <tr className="border-b"><th className="text-left p-2">Malzeme</th><th className="p-2">Miktar</th></tr>
+                </thead>
+                <tbody>
+                  {stock.map(s=> (
+                    <tr key={s.id} className="border-b"><td className="p-2">{s.name}</td><td className="p-2">{s.qty}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {view === "reports" && (
+          <section>
+            <h2 className="text-xl font-semibold mb-3">Raporlar</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3 border rounded">
+                <div className="text-sm text-slate-500">Satışlar (seçili tarih)</div>
+                <div className="text-2xl font-bold">{totalSales.toFixed(2)} ₺</div>
+              </div>
+              <div className="p-3 border rounded">
+                <div className="text-sm text-slate-500">Giderler (seçili tarih)</div>
+                <div className="text-2xl font-bold">{totalExpenses.toFixed(2)} ₺</div>
+              </div>
+              <div className="p-3 border rounded">
+                <div className="text-sm text-slate-500">Net Kâr (seçili tarih)</div>
+                <div className="text-2xl font-bold">{netProfit.toFixed(2)} ₺</div>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <button onClick={()=>exportCSV(salesFiltered, 'sales-filtered.csv')} className="p-2 border rounded mr-2">Satış CSV</button>
+              <button onClick={()=>exportCSV(expensesFiltered, 'expenses-filtered.csv')} className="p-2 border rounded">Gider CSV</button>
+            </div>
+          </section>
+        )}
+
+      </main>
+
+      <footer className="max-w-5xl mx-auto mt-4 text-center text-sm text-slate-500">Prototip - Veriler tarayıcıda saklanır (localStorage). İstersen bulut senkronizasyonu ekleriz.</footer>
+    </div>
+  );
+}
+
+function AddStockForm({ onAdd }){
+  const [name, setName] = useState("");
+  const [qty, setQty] = useState(0);
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+      <div>
+        <label className="text-sm">Malzeme</label>
+        <input value={name} onChange={e=>setName(e.target.value)} className="w-full p-2 border rounded" placeholder="Un" />
+      </div>
+      <div>
+        <label className="text-sm">Miktar</label>
+        <input type="number" value={qty} onChange={e=>setQty(e.target.value)} className="w-full p-2 border rounded" />
+      </div>
+      <div className="md:col-span-2">
+        <button onClick={()=>{ onAdd(name, qty); setName(""); setQty(0); }} className="w-full p-2 bg-emerald-600 text-white rounded">Stok Ekle / Güncelle</button>
+      </div>
+    </div>
+  );
+}
