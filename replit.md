@@ -10,6 +10,25 @@ The system provides real-time business metrics including total sales, expenses, 
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+**Session Management & Historical Data Protection (Latest):**
+- Removed manual "New Day" button - sessions now only created automatically at midnight Turkish time
+- Implemented read-only protection for past sessions:
+  - Frontend detects past sessions by comparing session date to today's date
+  - All create/edit/delete UI controls disabled when viewing historical sessions
+  - Backend POST endpoints validate active session date = today before allowing creation
+  - Backend DELETE endpoints verify both session date and record ownership before deletion
+  - Visual warning banner shown when viewing read-only historical data
+- Users can view but not modify sales and expenses from previous days
+
+**Stock Management System:**
+- Added manual product-to-stock item linking (preference-based, not automatic)
+- Products page includes dropdown to select which stock item (if any) each product uses
+- When a sale is made, stock automatically decreases from the linked stock item
+- Products can be set to "Stok kullanmıyor" (no stock) to opt out of stock tracking
+- Stock deduction logic uses stockItemId foreign key instead of name matching
+
 ## System Architecture
 
 ### Frontend Architecture
@@ -85,11 +104,18 @@ Preferred communication style: Simple, everyday language.
 - Zod schemas generated from Drizzle schemas for validation
 
 **Data Models:**
-- **Products:** id, name, price (decimal), category (optional)
-- **Sales:** id, date (timestamp), total (decimal)
+- **Business Sessions:** id, date (unique date), isActive (boolean), createdAt (timestamp)
+  - Automatically created at midnight Turkish time
+  - Only one session can be active at a time
+  - Sessions are read-only once the date has passed
+- **Products:** id, name, price (decimal), categoryId (FK, optional), stockItemId (FK, optional)
+  - Manual stock item linking: Users choose which stock item (if any) each product uses
+  - When a product is sold, stock decreases from the linked stock item
+- **Sales:** id, sessionId (FK), date (timestamp), total (decimal)
 - **Sale Items:** id, saleId (FK), productId (FK), productName, quantity, price, total
-- **Expenses:** id, date (timestamp), category, amount (decimal)
+- **Expenses:** id, sessionId (FK), date (timestamp), category, amount (decimal)
 - **Stock:** id, name (unique), quantity (integer)
+- **Categories:** id, name (unique)
 
 **Storage Implementation:**
 - In-memory storage (MemStorage class) as fallback/development mode
