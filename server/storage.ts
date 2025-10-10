@@ -37,6 +37,12 @@ export interface IStorage {
   createSale(sessionId: string, sale: InsertSale, items: InsertSaleItem[]): Promise<{ sale: Sale; items: SaleItem[] }>;
   getSaleItems(saleId: string): Promise<SaleItem[]>;
   deleteSale(id: string): Promise<boolean>;
+  getSalesStatistics(sessionId: string): Promise<{
+    todaysMostPopular: { productId: string; productName: string; quantity: number } | null;
+    bestSelling: { productId: string; productName: string; quantity: number } | null;
+    leastSelling: { productId: string; productName: string; quantity: number } | null;
+    allProducts: Array<{ productId: string; productName: string; quantity: number; revenue: number }>;
+  }>;
 
   // Expenses
   getExpenses(sessionId: string, dateFrom?: Date, dateTo?: Date): Promise<Expense[]>;
@@ -260,6 +266,83 @@ export class MemStorage implements IStorage {
     items.forEach(item => this.saleItems.delete(item.id));
     // Delete the sale
     return this.sales.delete(id);
+  }
+
+  async getSalesStatistics(sessionId: string): Promise<{
+    todaysMostPopular: { productId: string; productName: string; quantity: number } | null;
+    bestSelling: { productId: string; productName: string; quantity: number } | null;
+    leastSelling: { productId: string; productName: string; quantity: number } | null;
+    allProducts: Array<{ productId: string; productName: string; quantity: number; revenue: number }>;
+  }> {
+    // Get ALL sales across ALL sessions for all-time stats
+    const allSales = Array.from(this.sales.values());
+    
+    // Get today's date (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Maps to aggregate product statistics
+    const productStatsAll = new Map<string, { productName: string; quantity: number; revenue: number }>();
+    const productStatsToday = new Map<string, { productName: string; quantity: number }>();
+    
+    // Process all sale items from all sessions
+    for (const sale of allSales) {
+      const items = await this.getSaleItems(sale.id);
+      const saleDate = new Date(sale.date);
+      const isToday = saleDate >= today;
+      
+      for (const item of items) {
+        // All-time stats (across all sessions)
+        const existingAll = productStatsAll.get(item.productId) || { 
+          productName: item.productName, 
+          quantity: 0, 
+          revenue: 0 
+        };
+        productStatsAll.set(item.productId, {
+          productName: item.productName,
+          quantity: existingAll.quantity + item.quantity,
+          revenue: existingAll.revenue + Number(item.total)
+        });
+        
+        // Today's stats (across all sessions but filtered by date)
+        if (isToday) {
+          const existingToday = productStatsToday.get(item.productId) || { 
+            productName: item.productName, 
+            quantity: 0 
+          };
+          productStatsToday.set(item.productId, {
+            productName: item.productName,
+            quantity: existingToday.quantity + item.quantity
+          });
+        }
+      }
+    }
+    
+    // Convert to arrays and sort
+    const allProductsArray = Array.from(productStatsAll.entries()).map(([productId, stats]) => ({
+      productId,
+      productName: stats.productName,
+      quantity: stats.quantity,
+      revenue: stats.revenue
+    })).sort((a, b) => b.quantity - a.quantity);
+    
+    const todayProductsArray = Array.from(productStatsToday.entries()).map(([productId, stats]) => ({
+      productId,
+      productName: stats.productName,
+      quantity: stats.quantity
+    })).sort((a, b) => b.quantity - a.quantity);
+    
+    // Find best and least selling
+    const bestSelling = allProductsArray.length > 0 ? allProductsArray[0] : null;
+    const leastSelling = allProductsArray.length > 0 ? allProductsArray[allProductsArray.length - 1] : null;
+    const todaysMostPopular = todayProductsArray.length > 0 ? todayProductsArray[0] : null;
+    
+    return {
+      todaysMostPopular,
+      bestSelling,
+      leastSelling,
+      allProducts: allProductsArray
+    };
   }
 
   // Expenses

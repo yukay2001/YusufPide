@@ -267,6 +267,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/reports/sales-statistics", async (_req, res) => {
+    try {
+      const activeSession = await storage.getActiveSession();
+      if (!activeSession) {
+        res.status(400).json({ error: "No active session" });
+        return;
+      }
+
+      const stats = await storage.getSalesStatistics(activeSession.id);
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch sales statistics" });
+    }
+  });
+
   // Expenses
   app.get("/api/expenses", async (req, res) => {
     try {
