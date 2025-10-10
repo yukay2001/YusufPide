@@ -102,6 +102,8 @@ export default function NewSales() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stock/alerts"] });
       toast({ title: "Satış kaydedildi" });
       setCart([]);
     },
