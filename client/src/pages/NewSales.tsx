@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Plus, Trash2, ShoppingCart } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, Eye } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -13,6 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import DataTable from "@/components/DataTable";
 import DateFilter from "@/components/DateFilter";
@@ -50,6 +56,7 @@ export default function NewSales() {
   const [dateTo, setDateTo] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [customerPayment, setCustomerPayment] = useState("");
+  const [viewingSaleId, setViewingSaleId] = useState<string | null>(null);
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -57,6 +64,11 @@ export default function NewSales() {
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
+  });
+
+  const { data: saleItems = [] } = useQuery<SaleItem[]>({
+    queryKey: ["/api/sales", viewingSaleId, "items"],
+    enabled: !!viewingSaleId,
   });
 
   const { data: sales = [], isLoading } = useQuery<Sale[]>({
@@ -180,14 +192,24 @@ export default function NewSales() {
       header: "İşlem",
       align: "center" as const,
       render: (sale: Sale) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => deleteSaleMutation.mutate(sale.id)}
-          data-testid={`button-delete-sale-${sale.id}`}
-        >
-          <Trash2 className="w-4 h-4 text-destructive" />
-        </Button>
+        <div className="flex justify-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setViewingSaleId(sale.id)}
+            data-testid={`button-view-sale-${sale.id}`}
+          >
+            <Eye className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => deleteSaleMutation.mutate(sale.id)}
+            data-testid={`button-delete-sale-${sale.id}`}
+          >
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -356,6 +378,45 @@ export default function NewSales() {
           <DataTable columns={salesColumns} data={formattedSales} emptyMessage="Henüz satış kaydı yok" />
         )}
       </div>
+
+      <Dialog open={!!viewingSaleId} onOpenChange={(open) => !open && setViewingSaleId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Satış Detayları</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-4">
+            {saleItems.length === 0 ? (
+              <p className="text-muted-foreground text-center">Yükleniyor...</p>
+            ) : (
+              saleItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-3 bg-muted rounded-md"
+                  data-testid={`sale-detail-item-${item.id}`}
+                >
+                  <div>
+                    <p className="font-medium" data-testid={`sale-detail-name-${item.id}`}>{item.productName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {item.quantity} x {Number(item.price).toFixed(2)} ₺
+                    </p>
+                  </div>
+                  <p className="font-bold" data-testid={`sale-detail-total-${item.id}`}>
+                    {Number(item.total).toFixed(2)} ₺
+                  </p>
+                </div>
+              ))
+            )}
+            {saleItems.length > 0 && (
+              <div className="border-t pt-3 flex items-center justify-between">
+                <span className="font-bold">Toplam:</span>
+                <span className="font-bold text-lg" data-testid="sale-detail-grand-total">
+                  {saleItems.reduce((sum, item) => sum + Number(item.total), 0).toFixed(2)} ₺
+                </span>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

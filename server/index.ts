@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedInitialData } from "./seed";
+import { startAutoSessionScheduler } from "./scheduler";
 
 const app = express();
 app.use(express.json());
@@ -40,6 +41,9 @@ app.use((req, res, next) => {
 (async () => {
   // Seed initial product data
   await seedInitialData();
+  
+  // Start automatic session scheduler (Turkish timezone)
+  startAutoSessionScheduler();
   
   const server = await registerRoutes(app);
 
