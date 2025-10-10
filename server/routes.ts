@@ -1,10 +1,57 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProductSchema, insertSaleSchema, insertExpenseSchema, insertStockSchema } from "@shared/schema";
+import { insertProductSchema, insertSaleSchema, insertExpenseSchema, insertStockSchema, insertBusinessSessionSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Business Sessions
+  app.get("/api/sessions", async (_req, res) => {
+    try {
+      const sessions = await storage.getBusinessSessions();
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch sessions" });
+    }
+  });
+
+  app.get("/api/sessions/active", async (_req, res) => {
+    try {
+      const session = await storage.getActiveSession();
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch active session" });
+    }
+  });
+
+  app.post("/api/sessions", async (req, res) => {
+    try {
+      const session = insertBusinessSessionSchema.parse(req.body);
+      const created = await storage.createBusinessSession(session);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create session" });
+      }
+    }
+  });
+
+  app.post("/api/sessions/:id/activate", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const session = await storage.setActiveSession(id);
+      if (!session) {
+        res.status(404).json({ error: "Session not found" });
+        return;
+      }
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to activate session" });
+    }
+  });
+
   // Products
   app.get("/api/products", async (_req, res) => {
     try {
@@ -65,8 +112,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sales
   app.get("/api/sales", async (req, res) => {
     try {
+      const activeSession = await storage.getActiveSession();
+      if (!activeSession) {
+        res.status(400).json({ error: "No active session" });
+        return;
+      }
+
       const { dateFrom, dateTo } = req.query;
       const sales = await storage.getSales(
+        activeSession.id,
         dateFrom ? new Date(dateFrom as string) : undefined,
         dateTo ? new Date(dateTo as string) : undefined
       );
@@ -95,6 +149,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/sales", async (req, res) => {
     try {
+      const activeSession = await storage.getActiveSession();
+      if (!activeSession) {
+        res.status(400).json({ error: "No active session. Please start a new business day first." });
+        return;
+      }
+
       const { items } = createSaleSchema.parse(req.body);
       
       // Fetch products and calculate total using server-side prices
@@ -121,6 +181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const result = await storage.createSale(
+        activeSession.id,
         { total: total.toFixed(2) },
         saleItems
       );
@@ -152,8 +213,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Expenses
   app.get("/api/expenses", async (req, res) => {
     try {
+      const activeSession = await storage.getActiveSession();
+      if (!activeSession) {
+        res.status(400).json({ error: "No active session" });
+        return;
+      }
+
       const { dateFrom, dateTo } = req.query;
       const expenses = await storage.getExpenses(
+        activeSession.id,
         dateFrom ? new Date(dateFrom as string) : undefined,
         dateTo ? new Date(dateTo as string) : undefined
       );
@@ -165,8 +233,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/expenses", async (req, res) => {
     try {
+      const activeSession = await storage.getActiveSession();
+      if (!activeSession) {
+        res.status(400).json({ error: "No active session. Please start a new business day first." });
+        return;
+      }
+
       const expense = insertExpenseSchema.parse(req.body);
-      const created = await storage.createExpense(expense);
+      const created = await storage.createExpense(activeSession.id, expense);
       res.json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {

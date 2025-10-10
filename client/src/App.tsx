@@ -11,6 +11,7 @@ import Expenses from "@/pages/Expenses";
 import Stock from "@/pages/Stock";
 import Reports from "@/pages/Reports";
 import ThemeToggle from "@/components/ThemeToggle";
+import SessionSelector from "@/components/SessionSelector";
 import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon } from "lucide-react";
 
 function Router() {
@@ -45,9 +46,12 @@ function App() {
         <div className="min-h-screen bg-background">
           <header className="sticky top-0 z-50 border-b bg-card">
             <div className="max-w-7xl mx-auto px-4 py-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
                 <h1 className="text-2xl font-bold">Pideci Yönetim Paneli</h1>
-                <ThemeToggle />
+                <div className="flex items-center gap-4 flex-wrap">
+                  <SessionSelector />
+                  <ThemeToggle />
+                </div>
               </div>
               <nav className="flex gap-2 flex-wrap">
                 {navItems.map((item) => {

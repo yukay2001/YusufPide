@@ -33,7 +33,7 @@ export default function Expenses() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { category: string; amount: number }) => {
+    mutationFn: async (data: { category: string; amount: string }) => {
       return await apiRequest("POST", "/api/expenses", data);
     },
     onSuccess: () => {
@@ -85,7 +85,7 @@ export default function Expenses() {
     amount: Number(expense.amount).toFixed(2),
   }));
 
-  const handleAddExpense = (data: { category: string; amount: number }) => {
+  const handleAddExpense = (data: { category: string; amount: string }) => {
     createMutation.mutate(data);
   };
 

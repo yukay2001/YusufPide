@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 
 interface ExpenseFormProps {
-  onSubmit: (data: { category: string; amount: number }) => void;
+  onSubmit: (data: { category: string; amount: string }) => void;
 }
 
 export default function ExpenseForm({ onSubmit }: ExpenseFormProps) {
@@ -17,7 +17,7 @@ export default function ExpenseForm({ onSubmit }: ExpenseFormProps) {
     if (category && amount) {
       onSubmit({
         category,
-        amount: Number(amount),
+        amount: Number(amount).toFixed(2),
       });
       setCategory("");
       setAmount("");

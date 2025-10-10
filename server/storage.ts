@@ -3,11 +3,19 @@ import {
   type Sale, type InsertSale,
   type SaleItem, type InsertSaleItem,
   type Expense, type InsertExpense,
-  type Stock, type InsertStock
+  type Stock, type InsertStock,
+  type BusinessSession, type InsertBusinessSession
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
+  // Business Sessions
+  getBusinessSessions(): Promise<BusinessSession[]>;
+  getBusinessSession(id: string): Promise<BusinessSession | undefined>;
+  getActiveSession(): Promise<BusinessSession | null>;
+  createBusinessSession(session: InsertBusinessSession): Promise<BusinessSession>;
+  setActiveSession(id: string): Promise<BusinessSession | undefined>;
+
   // Products
   getProducts(): Promise<Product[]>;
   getProduct(id: string): Promise<Product | undefined>;
@@ -16,16 +24,16 @@ export interface IStorage {
   deleteProduct(id: string): Promise<boolean>;
 
   // Sales
-  getSales(dateFrom?: Date, dateTo?: Date): Promise<Sale[]>;
+  getSales(sessionId: string, dateFrom?: Date, dateTo?: Date): Promise<Sale[]>;
   getSale(id: string): Promise<Sale | undefined>;
-  createSale(sale: InsertSale, items: InsertSaleItem[]): Promise<{ sale: Sale; items: SaleItem[] }>;
+  createSale(sessionId: string, sale: InsertSale, items: InsertSaleItem[]): Promise<{ sale: Sale; items: SaleItem[] }>;
   getSaleItems(saleId: string): Promise<SaleItem[]>;
   deleteSale(id: string): Promise<boolean>;
 
   // Expenses
-  getExpenses(dateFrom?: Date, dateTo?: Date): Promise<Expense[]>;
+  getExpenses(sessionId: string, dateFrom?: Date, dateTo?: Date): Promise<Expense[]>;
   getExpense(id: string): Promise<Expense | undefined>;
-  createExpense(expense: InsertExpense): Promise<Expense>;
+  createExpense(sessionId: string, expense: InsertExpense): Promise<Expense>;
   deleteExpense(id: string): Promise<boolean>;
 
   // Stock
@@ -39,18 +47,81 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
+  private businessSessions: Map<string, BusinessSession>;
   private products: Map<string, Product>;
   private sales: Map<string, Sale>;
   private saleItems: Map<string, SaleItem>;
   private expenses: Map<string, Expense>;
   private stock: Map<string, Stock>;
+  private activeSessionId: string | null;
 
   constructor() {
+    this.businessSessions = new Map();
     this.products = new Map();
     this.sales = new Map();
     this.saleItems = new Map();
     this.expenses = new Map();
     this.stock = new Map();
+    this.activeSessionId = null;
+  }
+
+  // Business Sessions
+  async getBusinessSessions(): Promise<BusinessSession[]> {
+    return Array.from(this.businessSessions.values())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getBusinessSession(id: string): Promise<BusinessSession | undefined> {
+    return this.businessSessions.get(id);
+  }
+
+  async getActiveSession(): Promise<BusinessSession | null> {
+    if (!this.activeSessionId) return null;
+    return this.businessSessions.get(this.activeSessionId) || null;
+  }
+
+  async createBusinessSession(insertSession: InsertBusinessSession): Promise<BusinessSession> {
+    const id = randomUUID();
+    
+    // Set all other sessions to inactive if this one is active
+    if (insertSession.isActive) {
+      this.businessSessions.forEach(session => {
+        session.isActive = false;
+      });
+    }
+    
+    const session: BusinessSession = { 
+      id,
+      date: insertSession.date,
+      name: insertSession.name,
+      isActive: insertSession.isActive ?? false,
+      createdAt: new Date()
+    };
+    
+    this.businessSessions.set(id, session);
+    
+    if (session.isActive) {
+      this.activeSessionId = id;
+    }
+    
+    return session;
+  }
+
+  async setActiveSession(id: string): Promise<BusinessSession | undefined> {
+    const session = this.businessSessions.get(id);
+    if (!session) return undefined;
+    
+    // Set all sessions to inactive
+    this.businessSessions.forEach(s => {
+      s.isActive = false;
+    });
+    
+    // Set this session to active
+    session.isActive = true;
+    this.activeSessionId = id;
+    this.businessSessions.set(id, session);
+    
+    return session;
   }
 
   // Products
@@ -88,8 +159,8 @@ export class MemStorage implements IStorage {
   }
 
   // Sales
-  async getSales(dateFrom?: Date, dateTo?: Date): Promise<Sale[]> {
-    let sales = Array.from(this.sales.values());
+  async getSales(sessionId: string, dateFrom?: Date, dateTo?: Date): Promise<Sale[]> {
+    let sales = Array.from(this.sales.values()).filter(sale => sale.sessionId === sessionId);
     
     if (dateFrom || dateTo) {
       sales = sales.filter(sale => {
@@ -107,10 +178,11 @@ export class MemStorage implements IStorage {
     return this.sales.get(id);
   }
 
-  async createSale(insertSale: InsertSale, insertItems: InsertSaleItem[]): Promise<{ sale: Sale; items: SaleItem[] }> {
+  async createSale(sessionId: string, insertSale: InsertSale, insertItems: InsertSaleItem[]): Promise<{ sale: Sale; items: SaleItem[] }> {
     const saleId = randomUUID();
     const sale: Sale = { 
-      id: saleId, 
+      id: saleId,
+      sessionId,
       date: new Date(),
       total: insertSale.total
     };
@@ -147,8 +219,8 @@ export class MemStorage implements IStorage {
   }
 
   // Expenses
-  async getExpenses(dateFrom?: Date, dateTo?: Date): Promise<Expense[]> {
-    let expenses = Array.from(this.expenses.values());
+  async getExpenses(sessionId: string, dateFrom?: Date, dateTo?: Date): Promise<Expense[]> {
+    let expenses = Array.from(this.expenses.values()).filter(expense => expense.sessionId === sessionId);
     
     if (dateFrom || dateTo) {
       expenses = expenses.filter(expense => {
@@ -166,10 +238,11 @@ export class MemStorage implements IStorage {
     return this.expenses.get(id);
   }
 
-  async createExpense(insertExpense: InsertExpense): Promise<Expense> {
+  async createExpense(sessionId: string, insertExpense: InsertExpense): Promise<Expense> {
     const id = randomUUID();
     const expense: Expense = { 
-      id, 
+      id,
+      sessionId,
       date: new Date(),
       ...insertExpense 
     };
