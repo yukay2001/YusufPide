@@ -11,11 +11,17 @@ export const businessSessions = pgTable("business_sessions", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const categories = pgTable("categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  category: text("category"),
+  categoryId: varchar("category_id").references(() => categories.id),
 });
 
 export const sales = pgTable("sales", {
@@ -51,6 +57,7 @@ export const stock = pgTable("stock", {
 
 // Insert schemas
 export const insertBusinessSessionSchema = createInsertSchema(businessSessions).omit({ id: true, createdAt: true });
+export const insertCategorySchema = createInsertSchema(categories).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
 export const insertSaleSchema = createInsertSchema(sales).omit({ id: true, date: true, sessionId: true });
 export const insertSaleItemSchema = createInsertSchema(saleItems).omit({ id: true, saleId: true });
@@ -60,6 +67,9 @@ export const insertStockSchema = createInsertSchema(stock).omit({ id: true });
 // Types
 export type BusinessSession = typeof businessSessions.$inferSelect;
 export type InsertBusinessSession = z.infer<typeof insertBusinessSessionSchema>;
+
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
 
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;

@@ -20,6 +20,27 @@ export async function seedInitialData() {
     console.log("Initial session created successfully!");
   }
 
+  // Check if categories already exist
+  const existingCategories = await storage.getCategories();
+  let yemekCategory, icecekCategory;
+  
+  if (existingCategories.length === 0) {
+    console.log("Creating default categories...");
+    yemekCategory = await storage.createCategory({ name: "Yemek" });
+    icecekCategory = await storage.createCategory({ name: "İçecek" });
+    console.log("Default categories created successfully!");
+  } else {
+    yemekCategory = existingCategories.find(c => c.name === "Yemek");
+    icecekCategory = existingCategories.find(c => c.name === "İçecek");
+    
+    if (!yemekCategory) {
+      yemekCategory = await storage.createCategory({ name: "Yemek" });
+    }
+    if (!icecekCategory) {
+      icecekCategory = await storage.createCategory({ name: "İçecek" });
+    }
+  }
+
   // Check if products already exist
   const existingProducts = await storage.getProducts();
   if (existingProducts.length > 0) {
@@ -31,22 +52,22 @@ export async function seedInitialData() {
 
   const products = [
     // Pide çeşitleri
-    { name: "Kıymalı Pide", price: "150", category: "Pide" },
-    { name: "Kuşbaşılı Pide", price: "180", category: "Pide" },
-    { name: "Kaşarlı Pide", price: "150", category: "Pide" },
-    { name: "Kuşbaşı Kaşarlı Pide", price: "220", category: "Pide" },
-    { name: "Peynirli Pide", price: "150", category: "Pide" },
-    { name: "Kıymalı Kaşarlı Pide", price: "200", category: "Pide" },
+    { name: "Kıymalı Pide", price: "150", categoryId: yemekCategory.id },
+    { name: "Kuşbaşılı Pide", price: "180", categoryId: yemekCategory.id },
+    { name: "Kaşarlı Pide", price: "150", categoryId: yemekCategory.id },
+    { name: "Kuşbaşı Kaşarlı Pide", price: "220", categoryId: yemekCategory.id },
+    { name: "Peynirli Pide", price: "150", categoryId: yemekCategory.id },
+    { name: "Kıymalı Kaşarlı Pide", price: "200", categoryId: yemekCategory.id },
     
     // Cantık çeşitleri
-    { name: "Cantık", price: "75", category: "Cantık" },
-    { name: "Kıymalı Kaşarlı Cantık", price: "100", category: "Cantık" },
-    { name: "Kuşbaşı Kaşarlı Cantık", price: "120", category: "Cantık" },
-    { name: "Kaşarlı Cantık", price: "120", category: "Cantık" },
+    { name: "Cantık", price: "75", categoryId: yemekCategory.id },
+    { name: "Kıymalı Kaşarlı Cantık", price: "100", categoryId: yemekCategory.id },
+    { name: "Kuşbaşı Kaşarlı Cantık", price: "120", categoryId: yemekCategory.id },
+    { name: "Kaşarlı Cantık", price: "120", categoryId: yemekCategory.id },
     
     // İçecekler
-    { name: "Ayran", price: "10", category: "İçecek" },
-    { name: "Soda", price: "40", category: "İçecek" },
+    { name: "Ayran", price: "10", categoryId: icecekCategory.id },
+    { name: "Soda", price: "40", categoryId: icecekCategory.id },
   ];
 
   for (const product of products) {

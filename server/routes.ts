@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProductSchema, insertSaleSchema, insertExpenseSchema, insertStockSchema, insertBusinessSessionSchema } from "@shared/schema";
+import { insertProductSchema, insertSaleSchema, insertExpenseSchema, insertStockSchema, insertBusinessSessionSchema, insertCategorySchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -49,6 +49,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(session);
     } catch (error) {
       res.status(500).json({ error: "Failed to activate session" });
+    }
+  });
+
+  // Categories
+  app.get("/api/categories", async (_req, res) => {
+    try {
+      const categories = await storage.getCategories();
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  });
+
+  app.post("/api/categories", async (req, res) => {
+    try {
+      const category = insertCategorySchema.parse(req.body);
+      const created = await storage.createCategory(category);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create category" });
+      }
+    }
+  });
+
+  app.put("/api/categories/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const update = insertCategorySchema.partial().parse(req.body);
+      const updated = await storage.updateCategory(id, update);
+      if (!updated) {
+        res.status(404).json({ error: "Category not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update category" });
+      }
+    }
+  });
+
+  app.delete("/api/categories/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteCategory(id);
+      if (!deleted) {
+        res.status(404).json({ error: "Category not found" });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete category" });
     }
   });
 

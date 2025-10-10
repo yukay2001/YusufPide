@@ -4,7 +4,8 @@ import {
   type SaleItem, type InsertSaleItem,
   type Expense, type InsertExpense,
   type Stock, type InsertStock,
-  type BusinessSession, type InsertBusinessSession
+  type BusinessSession, type InsertBusinessSession,
+  type Category, type InsertCategory
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -15,6 +16,13 @@ export interface IStorage {
   getActiveSession(): Promise<BusinessSession | null>;
   createBusinessSession(session: InsertBusinessSession): Promise<BusinessSession>;
   setActiveSession(id: string): Promise<BusinessSession | undefined>;
+
+  // Categories
+  getCategories(): Promise<Category[]>;
+  getCategory(id: string): Promise<Category | undefined>;
+  createCategory(category: InsertCategory): Promise<Category>;
+  updateCategory(id: string, category: Partial<InsertCategory>): Promise<Category | undefined>;
+  deleteCategory(id: string): Promise<boolean>;
 
   // Products
   getProducts(): Promise<Product[]>;
@@ -48,6 +56,7 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private businessSessions: Map<string, BusinessSession>;
+  private categories: Map<string, Category>;
   private products: Map<string, Product>;
   private sales: Map<string, Sale>;
   private saleItems: Map<string, SaleItem>;
@@ -57,6 +66,7 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.businessSessions = new Map();
+    this.categories = new Map();
     this.products = new Map();
     this.sales = new Map();
     this.saleItems = new Map();
@@ -124,6 +134,40 @@ export class MemStorage implements IStorage {
     return session;
   }
 
+  // Categories
+  async getCategories(): Promise<Category[]> {
+    return Array.from(this.categories.values())
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getCategory(id: string): Promise<Category | undefined> {
+    return this.categories.get(id);
+  }
+
+  async createCategory(insertCategory: InsertCategory): Promise<Category> {
+    const id = randomUUID();
+    const category: Category = {
+      id,
+      name: insertCategory.name,
+      createdAt: new Date()
+    };
+    this.categories.set(id, category);
+    return category;
+  }
+
+  async updateCategory(id: string, update: Partial<InsertCategory>): Promise<Category | undefined> {
+    const category = this.categories.get(id);
+    if (!category) return undefined;
+    
+    const updated: Category = { ...category, ...update };
+    this.categories.set(id, updated);
+    return updated;
+  }
+
+  async deleteCategory(id: string): Promise<boolean> {
+    return this.categories.delete(id);
+  }
+
   // Products
   async getProducts(): Promise<Product[]> {
     return Array.from(this.products.values());
@@ -139,7 +183,7 @@ export class MemStorage implements IStorage {
       id, 
       name: insertProduct.name,
       price: insertProduct.price,
-      category: insertProduct.category ?? null
+      categoryId: insertProduct.categoryId ?? null
     };
     this.products.set(id, product);
     return product;
