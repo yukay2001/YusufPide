@@ -20,6 +20,10 @@ export default function Expenses() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
+  const { data: activeSession } = useQuery<{ id: string; isActive: boolean; date: string } | null>({
+    queryKey: ["/api/sessions/active"],
+  });
+
   const { data: expenses = [], isLoading } = useQuery<Expense[]>({
     queryKey: ["/api/expenses", dateFrom, dateTo],
     queryFn: async () => {
@@ -58,6 +62,8 @@ export default function Expenses() {
     },
   });
 
+  const isReadOnly = activeSession?.date !== new Date().toISOString().split('T')[0];
+
   const columns = [
     { header: "Tarih", accessor: "date", align: "left" as const },
     { header: "Kategori", accessor: "category", align: "left" as const },
@@ -71,6 +77,7 @@ export default function Expenses() {
           size="icon"
           onClick={() => deleteMutation.mutate(expense.id)}
           data-testid={`button-delete-expense-${expense.id}`}
+          disabled={isReadOnly}
         >
           <Trash2 className="w-4 h-4 text-destructive" />
         </Button>
@@ -104,7 +111,16 @@ export default function Expenses() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Gider</h2>
-      <ExpenseForm onSubmit={handleAddExpense} />
+      
+      {isReadOnly && (
+        <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md p-3">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            Geçmiş gün görüntülüyorsunuz. Sadece satış ve gider kayıtlarını görüntüleyebilirsiniz.
+          </p>
+        </div>
+      )}
+      
+      {!isReadOnly && <ExpenseForm onSubmit={handleAddExpense} />}
       
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Gider Listesi</h3>

@@ -190,7 +190,8 @@ export class MemStorage implements IStorage {
       id, 
       name: insertProduct.name,
       price: insertProduct.price,
-      categoryId: insertProduct.categoryId ?? null
+      categoryId: insertProduct.categoryId ?? null,
+      stockItemId: insertProduct.stockItemId ?? null
     };
     this.products.set(id, product);
     return product;

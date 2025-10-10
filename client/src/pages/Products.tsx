@@ -23,6 +23,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import type { Product, Category } from "@shared/schema";
 
+interface StockItem {
+  id: string;
+  name: string;
+}
+
 export default function Products() {
   const { toast } = useToast();
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
@@ -34,6 +39,7 @@ export default function Products() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [stockItemId, setStockItemId] = useState("");
   
   // Category form state
   const [categoryName, setCategoryName] = useState("");
@@ -46,9 +52,13 @@ export default function Products() {
     queryKey: ["/api/categories"],
   });
 
+  const { data: stock = [] } = useQuery<StockItem[]>({
+    queryKey: ["/api/stock"],
+  });
+
   // Product mutations
   const createProductMutation = useMutation({
-    mutationFn: async (data: { name: string; price: string; categoryId?: string }) => {
+    mutationFn: async (data: { name: string; price: string; categoryId?: string; stockItemId?: string }) => {
       return await apiRequest("POST", "/api/products", data);
     },
     onSuccess: () => {
@@ -60,7 +70,7 @@ export default function Products() {
   });
 
   const updateProductMutation = useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; name: string; price: string; categoryId?: string }) => {
+    mutationFn: async ({ id, ...data }: { id: string; name: string; price: string; categoryId?: string; stockItemId?: string }) => {
       return await apiRequest("PUT", `/api/products/${id}`, data);
     },
     onSuccess: () => {
@@ -120,6 +130,7 @@ export default function Products() {
     setName("");
     setPrice("");
     setCategoryId("");
+    setStockItemId("");
     setEditingProduct(null);
   };
 
@@ -130,11 +141,22 @@ export default function Products() {
 
   const handleProductSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const productData = {
+    const productData: any = {
       name,
       price,
-      categoryId: categoryId || undefined,
     };
+    
+    // Handle categoryId - send undefined if not selected or is space
+    if (categoryId && categoryId !== " ") {
+      productData.categoryId = categoryId;
+    }
+    
+    // Handle stockItemId - send null if "none" selected, otherwise send the id or undefined
+    if (stockItemId === "none") {
+      productData.stockItemId = null;
+    } else if (stockItemId) {
+      productData.stockItemId = stockItemId;
+    }
 
     if (editingProduct) {
       updateProductMutation.mutate({ id: editingProduct.id, ...productData });
@@ -157,6 +179,7 @@ export default function Products() {
     setName(product.name);
     setPrice(product.price);
     setCategoryId(product.categoryId || "");
+    setStockItemId(product.stockItemId || "");
     setIsProductDialogOpen(true);
   };
 
@@ -297,6 +320,25 @@ export default function Products() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="product-stock">Stok Eşleştirme (İsteğe Bağlı)</Label>
+                  <Select value={stockItemId} onValueChange={setStockItemId}>
+                    <SelectTrigger data-testid="select-product-stock">
+                      <SelectValue placeholder="Stok ürünü seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Stok kullanmıyor</SelectItem>
+                      {stock.map((item) => (
+                        <SelectItem key={item.id} value={item.id} data-testid={`select-stock-${item.id}`}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Bu ürün satıldığında hangi stok azalacak?
+                  </p>
                 </div>
                 <Button type="submit" className="w-full" data-testid="button-save-product">
                   {editingProduct ? "Güncelle" : "Ekle"}

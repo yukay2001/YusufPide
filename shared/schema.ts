@@ -22,6 +22,7 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   categoryId: varchar("category_id").references(() => categories.id),
+  stockItemId: varchar("stock_item_id").references(() => stock.id),
 });
 
 export const sales = pgTable("sales", {

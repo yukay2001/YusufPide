@@ -212,6 +212,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
+      // Check if the active session is today's date
+      const today = new Date().toISOString().split('T')[0];
+      if (activeSession.date !== today) {
+        res.status(403).json({ error: "Cannot create sales for past sessions. Please select today's session." });
+        return;
+      }
+
       const { items } = createSaleSchema.parse(req.body);
       
       // Fetch products and calculate total using server-side prices
@@ -243,9 +250,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         saleItems
       );
       
-      // Automatically deduct stock based on product name
-      for (const saleItem of saleItems) {
-        await storage.deductStockByName(saleItem.productName, saleItem.quantity);
+      // Automatically deduct stock based on product-stock mapping
+      for (const item of items) {
+        const product = await storage.getProduct(item.productId);
+        if (product && product.stockItemId) {
+          const stockItem = await storage.getStockItem(product.stockItemId);
+          if (stockItem) {
+            await storage.updateStockQuantity(stockItem.name, -item.quantity);
+          }
+        }
       }
       
       res.json(result);
@@ -260,7 +273,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/sales/:id", async (req, res) => {
     try {
+      const activeSession = await storage.getActiveSession();
+      if (!activeSession) {
+        res.status(400).json({ error: "No active session" });
+        return;
+      }
+
+      // Check if the active session is today's date
+      const today = new Date().toISOString().split('T')[0];
+      if (activeSession.date !== today) {
+        res.status(403).json({ error: "Cannot delete sales from past sessions." });
+        return;
+      }
+
       const { id } = req.params;
+      
+      // Verify the sale belongs to the current active session
+      const sale = await storage.getSale(id);
+      if (!sale) {
+        res.status(404).json({ error: "Sale not found" });
+        return;
+      }
+      
+      if (sale.sessionId !== activeSession.id) {
+        res.status(403).json({ error: "Cannot delete sales from other sessions." });
+        return;
+      }
+      
       const deleted = await storage.deleteSale(id);
       if (!deleted) {
         res.status(404).json({ error: "Sale not found" });
@@ -316,6 +355,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
+      // Check if the active session is today's date
+      const today = new Date().toISOString().split('T')[0];
+      if (activeSession.date !== today) {
+        res.status(403).json({ error: "Cannot create expenses for past sessions. Please select today's session." });
+        return;
+      }
+
       const expense = insertExpenseSchema.parse(req.body);
       const created = await storage.createExpense(activeSession.id, expense);
       res.json(created);
@@ -330,7 +376,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/expenses/:id", async (req, res) => {
     try {
+      const activeSession = await storage.getActiveSession();
+      if (!activeSession) {
+        res.status(400).json({ error: "No active session" });
+        return;
+      }
+
+      // Check if the active session is today's date
+      const today = new Date().toISOString().split('T')[0];
+      if (activeSession.date !== today) {
+        res.status(403).json({ error: "Cannot delete expenses from past sessions." });
+        return;
+      }
+
       const { id } = req.params;
+      
+      // Verify the expense belongs to the current active session
+      const expense = await storage.getExpense(id);
+      if (!expense) {
+        res.status(404).json({ error: "Expense not found" });
+        return;
+      }
+      
+      if (expense.sessionId !== activeSession.id) {
+        res.status(403).json({ error: "Cannot delete expenses from other sessions." });
+        return;
+      }
+      
       const deleted = await storage.deleteExpense(id);
       if (!deleted) {
         res.status(404).json({ error: "Expense not found" });

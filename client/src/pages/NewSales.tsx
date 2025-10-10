@@ -66,6 +66,10 @@ export default function NewSales() {
     queryKey: ["/api/categories"],
   });
 
+  const { data: activeSession } = useQuery<{ id: string; isActive: boolean; date: string } | null>({
+    queryKey: ["/api/sessions/active"],
+  });
+
   const { data: saleItems = [] } = useQuery<SaleItem[]>({
     queryKey: ["/api/sales", viewingSaleId, "items"],
     queryFn: async () => {
@@ -210,6 +214,7 @@ export default function NewSales() {
             size="icon"
             onClick={() => deleteSaleMutation.mutate(sale.id)}
             data-testid={`button-delete-sale-${sale.id}`}
+            disabled={isReadOnly}
           >
             <Trash2 className="w-4 h-4 text-destructive" />
           </Button>
@@ -224,9 +229,19 @@ export default function NewSales() {
     total: Number(sale.total).toFixed(2),
   }));
 
+  const isReadOnly = activeSession?.date !== new Date().toISOString().split('T')[0];
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Satış</h2>
+
+      {isReadOnly && (
+        <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md p-3">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            Geçmiş gün görüntülüyorsunuz. Sadece satış ve gider kayıtlarını görüntüleyebilirsiniz.
+          </p>
+        </div>
+      )}
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Yeni Satış</h3>
@@ -286,7 +301,12 @@ export default function NewSales() {
             />
           </div>
           <div className="flex items-end">
-            <Button onClick={addToCart} className="w-full" data-testid="button-add-to-cart">
+            <Button 
+              onClick={addToCart} 
+              className="w-full" 
+              data-testid="button-add-to-cart"
+              disabled={isReadOnly}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Ekle
             </Button>
@@ -355,6 +375,7 @@ export default function NewSales() {
                   onClick={handleCompleteSale}
                   size="lg"
                   data-testid="button-complete-sale"
+                  disabled={isReadOnly}
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Satışı Tamamla
