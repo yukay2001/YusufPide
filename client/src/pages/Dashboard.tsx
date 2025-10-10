@@ -1,43 +1,79 @@
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import DashboardStats from "@/components/DashboardStats";
 import StockAlert from "@/components/StockAlert";
 import { DollarSign, TrendingDown, TrendingUp, Package } from "lucide-react";
 
+interface Sale {
+  id: string;
+  date: string;
+  total: string;
+}
+
+interface SaleItem {
+  id: string;
+  saleId: string;
+  productName: string;
+  quantity: number;
+  price: string;
+  total: string;
+}
+
+interface Expense {
+  id: string;
+  date: string;
+  category: string;
+  amount: string;
+}
+
+interface StockItem {
+  id: string;
+  name: string;
+  quantity: number;
+}
+
 export default function Dashboard() {
-  //todo: remove mock functionality
-  const [sales] = useState([
-    { id: 1, productName: "Kıymalı", quantity: 5, total: 300 },
-    { id: 2, productName: "Peynirli", quantity: 3, total: 165 },
-    { id: 3, productName: "Kıymalı", quantity: 2, total: 120 },
-    { id: 4, productName: "Karışık", quantity: 4, total: 280 },
-  ]);
+  const { data: sales = [] } = useQuery<Sale[]>({
+    queryKey: ["/api/sales"],
+  });
 
-  const [expenses] = useState([
-    { id: 1, amount: 500 },
-    { id: 2, amount: 300 },
-  ]);
+  const { data: expenses = [] } = useQuery<Expense[]>({
+    queryKey: ["/api/expenses"],
+  });
 
-  const [stock] = useState([
-    { name: "Kıymalı", quantity: 3 },
-    { name: "Peynirli", quantity: 8 },
-    { name: "Karışık", quantity: 2 },
-    { name: "Un", quantity: 1 },
-  ]);
+  const { data: stock = [] } = useQuery<StockItem[]>({
+    queryKey: ["/api/stock"],
+  });
 
-  const totalSales = sales.reduce((sum, sale) => sum + sale.total, 0);
-  const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  // Fetch all sale items to calculate top product
+  const { data: allSaleItems = [] } = useQuery<SaleItem[]>({
+    queryKey: ["/api/sales/items"],
+    queryFn: async () => {
+      const items: SaleItem[] = [];
+      for (const sale of sales) {
+        const response = await fetch(`/api/sales/${sale.id}/items`);
+        const saleItems = await response.json();
+        items.push(...saleItems);
+      }
+      return items;
+    },
+    enabled: sales.length > 0,
+  });
+
+  const totalSales = sales.reduce((sum, sale) => sum + Number(sale.total), 0);
+  const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
   const netProfit = totalSales - totalExpenses;
 
+  // Calculate top product
   const productCounts: { [key: string]: number } = {};
-  sales.forEach(sale => {
-    productCounts[sale.productName] = (productCounts[sale.productName] || 0) + sale.quantity;
+  allSaleItems.forEach(item => {
+    productCounts[item.productName] = (productCounts[item.productName] || 0) + item.quantity;
   });
   const topProduct = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
 
   const stats = [
     { label: "Toplam Satış", value: `${totalSales.toFixed(2)} ₺`, icon: DollarSign, trend: "up" as const },
     { label: "Toplam Gider", value: `${totalExpenses.toFixed(2)} ₺`, icon: TrendingDown, trend: "down" as const },
-    { label: "Net Kâr", value: `${netProfit.toFixed(2)} ₺`, icon: TrendingUp, trend: "up" as const },
+    { label: "Net Kâr", value: `${netProfit.toFixed(2)} ₺`, icon: TrendingUp, trend: netProfit >= 0 ? "up" as const : "down" as const },
     { label: "En Çok Satılan", value: topProduct, icon: Package },
   ];
 

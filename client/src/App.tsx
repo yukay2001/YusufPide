@@ -5,18 +5,20 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
-import Sales from "@/pages/Sales";
+import NewSales from "@/pages/NewSales";
+import Products from "@/pages/Products";
 import Expenses from "@/pages/Expenses";
 import Stock from "@/pages/Stock";
 import Reports from "@/pages/Reports";
 import ThemeToggle from "@/components/ThemeToggle";
-import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon } from "lucide-react";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
-      <Route path="/sales" component={Sales} />
+      <Route path="/sales" component={NewSales} />
+      <Route path="/products" component={Products} />
       <Route path="/expenses" component={Expenses} />
       <Route path="/stock" component={Stock} />
       <Route path="/reports" component={Reports} />
@@ -31,6 +33,7 @@ function App() {
   const navItems = [
     { path: "/", label: "Dashboard", icon: LayoutDashboard },
     { path: "/sales", label: "Satış", icon: ShoppingCart },
+    { path: "/products", label: "Ürünler", icon: TagIcon },
     { path: "/expenses", label: "Gider", icon: TrendingDown },
     { path: "/stock", label: "Stok", icon: Package },
     { path: "/reports", label: "Rapor", icon: FileText },

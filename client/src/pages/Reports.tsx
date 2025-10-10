@@ -1,20 +1,71 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import DateFilter from "@/components/DateFilter";
 import { Card } from "@/components/ui/card";
 import { DollarSign, TrendingDown, TrendingUp } from "lucide-react";
 
+interface Sale {
+  id: string;
+  date: string;
+  total: string;
+}
+
+interface Expense {
+  id: string;
+  date: string;
+  category: string;
+  amount: string;
+}
+
 export default function Reports() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  
-  //todo: remove mock functionality
-  const totalSales = 12450.00;
-  const totalExpenses = 3200.00;
+
+  const { data: sales = [] } = useQuery<Sale[]>({
+    queryKey: ["/api/sales", dateFrom, dateTo],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (dateFrom) params.append("dateFrom", dateFrom);
+      if (dateTo) params.append("dateTo", dateTo);
+      const url = `/api/sales${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url);
+      return response.json();
+    },
+  });
+
+  const { data: expenses = [] } = useQuery<Expense[]>({
+    queryKey: ["/api/expenses", dateFrom, dateTo],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (dateFrom) params.append("dateFrom", dateFrom);
+      if (dateTo) params.append("dateTo", dateTo);
+      const url = `/api/expenses${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url);
+      return response.json();
+    },
+  });
+
+  const totalSales = sales.reduce((sum, sale) => sum + Number(sale.total), 0);
+  const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
   const netProfit = totalSales - totalExpenses;
 
   const handleExport = () => {
-    console.log("Exporting report...");
-    //todo: remove mock functionality - implement actual report export
+    const salesRows = sales.map(s => `Satış,${new Date(s.date).toLocaleString('tr-TR')},${s.total}`);
+    const expenseRows = expenses.map(e => `Gider,${new Date(e.date).toLocaleString('tr-TR')},${e.amount}`);
+    const csv = [
+      "Tür,Tarih,Tutar",
+      ...salesRows,
+      ...expenseRows,
+      "",
+      `Toplam Satış,,${totalSales.toFixed(2)}`,
+      `Toplam Gider,,${totalExpenses.toFixed(2)}`,
+      `Net Kâr,,${netProfit.toFixed(2)}`,
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "rapor.csv";
+    link.click();
   };
 
   return (

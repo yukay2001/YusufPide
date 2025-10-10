@@ -1,18 +1,63 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
+export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  name: text("name").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  category: text("category"),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const sales = pgTable("sales", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: timestamp("date").notNull().defaultNow(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export const saleItems = pgTable("sale_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  saleId: varchar("sale_id").notNull().references(() => sales.id),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  productName: text("product_name").notNull(),
+  quantity: integer("quantity").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+});
+
+export const expenses = pgTable("expenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: timestamp("date").notNull().defaultNow(),
+  category: text("category").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+});
+
+export const stock = pgTable("stock", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  quantity: integer("quantity").notNull().default(0),
+});
+
+// Insert schemas
+export const insertProductSchema = createInsertSchema(products).omit({ id: true });
+export const insertSaleSchema = createInsertSchema(sales).omit({ id: true, date: true });
+export const insertSaleItemSchema = createInsertSchema(saleItems).omit({ id: true, saleId: true });
+export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, date: true });
+export const insertStockSchema = createInsertSchema(stock).omit({ id: true });
+
+// Types
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+
+export type Sale = typeof sales.$inferSelect;
+export type InsertSale = z.infer<typeof insertSaleSchema>;
+
+export type SaleItem = typeof saleItems.$inferSelect;
+export type InsertSaleItem = z.infer<typeof insertSaleItemSchema>;
+
+export type Expense = typeof expenses.$inferSelect;
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+
+export type Stock = typeof stock.$inferSelect;
+export type InsertStock = z.infer<typeof insertStockSchema>;

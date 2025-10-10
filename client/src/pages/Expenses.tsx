@@ -1,18 +1,41 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import ExpenseForm from "@/components/ExpenseForm";
 import DataTable from "@/components/DataTable";
 import DateFilter from "@/components/DateFilter";
 
+interface Expense {
+  id: string;
+  date: string;
+  category: string;
+  amount: string;
+}
+
 export default function Expenses() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  
-  //todo: remove mock functionality
-  const [expensesData] = useState([
-    { date: "10.10.2025 10:00", category: "Elektrik", amount: "500.00" },
-    { date: "09.10.2025 15:30", category: "Un alımı", amount: "1,200.00" },
-    { date: "08.10.2025 09:00", category: "Kira", amount: "3,000.00" },
-  ]);
+
+  const { data: expenses = [], isLoading } = useQuery<Expense[]>({
+    queryKey: ["/api/expenses", dateFrom, dateTo],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (dateFrom) params.append("dateFrom", dateFrom);
+      if (dateTo) params.append("dateTo", dateTo);
+      const url = `/api/expenses${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url);
+      return response.json();
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { category: string; amount: number }) => {
+      return await apiRequest("POST", "/api/expenses", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+    },
+  });
 
   const columns = [
     { header: "Tarih", accessor: "date", align: "left" as const },
@@ -20,14 +43,26 @@ export default function Expenses() {
     { header: "Tutar (₺)", accessor: "amount", align: "right" as const },
   ];
 
+  const formattedExpenses = expenses.map(expense => ({
+    date: new Date(expense.date).toLocaleString('tr-TR'),
+    category: expense.category,
+    amount: Number(expense.amount).toFixed(2),
+  }));
+
   const handleAddExpense = (data: { category: string; amount: number }) => {
-    console.log("Expense added:", data);
-    //todo: remove mock functionality - implement actual expense addition
+    createMutation.mutate(data);
   };
 
   const handleExport = () => {
-    console.log("Exporting expenses data...");
-    //todo: remove mock functionality - implement actual CSV export
+    const csv = [
+      ["Tarih", "Kategori", "Tutar"].join(","),
+      ...formattedExpenses.map(e => [e.date, e.category, e.amount].join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "giderler.csv";
+    link.click();
   };
 
   return (
@@ -45,7 +80,13 @@ export default function Expenses() {
           onClear={() => { setDateFrom(""); setDateTo(""); }}
           onExport={handleExport}
         />
-        <DataTable columns={columns} data={expensesData} emptyMessage="Henüz gider kaydı yok" />
+        {isLoading ? (
+          <div className="p-6 border rounded-md">
+            <p className="text-center text-muted-foreground">Yükleniyor...</p>
+          </div>
+        ) : (
+          <DataTable columns={columns} data={formattedExpenses} emptyMessage="Henüz gider kaydı yok" />
+        )}
       </div>
     </div>
   );
