@@ -253,9 +253,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Automatically deduct stock based on product-stock mapping
       for (const item of items) {
         const product = await storage.getProduct(item.productId);
+        console.log(`[STOCK DEBUG] Product ${item.productId}:`, product);
         
         if (product && product.stockItemId) {
-          await storage.updateStockQuantityById(product.stockItemId, -item.quantity);
+          console.log(`[STOCK DEBUG] Deducting ${item.quantity} from stock ${product.stockItemId}`);
+          const result = await storage.updateStockQuantityById(product.stockItemId, -item.quantity);
+          console.log(`[STOCK DEBUG] Stock update result:`, result);
+        } else {
+          console.log(`[STOCK DEBUG] No stock linked for product ${product?.name || 'unknown'}`);
         }
       }
       
