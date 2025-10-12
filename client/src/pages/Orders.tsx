@@ -20,6 +20,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Product, Category } from "@shared/schema";
 
@@ -376,6 +386,8 @@ function OrderDetails({
   onCompleteOrder: (orderId: string) => void;
   onCancelOrder: (orderId: string) => void;
 }) {
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  
   const { data: activeOrder } = useQuery<Order | null>({
     queryKey: ["/api/tables", tableId, "active-order"],
     queryFn: async () => {
@@ -508,7 +520,7 @@ function OrderDetails({
       <DialogFooter className="flex gap-2">
         <Button
           variant="outline"
-          onClick={() => onCancelOrder(activeOrder.id)}
+          onClick={() => setShowCancelConfirm(true)}
           className="gap-2"
           data-testid="button-cancel-order"
         >
@@ -524,6 +536,29 @@ function OrderDetails({
           Tamamla
         </Button>
       </DialogFooter>
+      
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Siparişi iptal et?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu işlem geri alınamaz. Siparişteki tüm ürünler silinecektir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-confirm-no">Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onCancelOrder(activeOrder.id);
+                setShowCancelConfirm(false);
+              }}
+              data-testid="button-cancel-confirm-yes"
+            >
+              Evet, iptal et
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

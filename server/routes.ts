@@ -659,7 +659,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/orders/:orderId/items", async (req, res) => {
     try {
       const { orderId } = req.params;
-      const itemData = insertOrderItemSchema.parse(req.body);
+      // Only validate productId and quantity from request
+      const requestSchema = z.object({
+        productId: z.string(),
+        quantity: z.number().int().positive()
+      });
+      const itemData = requestSchema.parse(req.body);
       
       // Fetch product to get current price and name
       const product = await storage.getProduct(itemData.productId);
