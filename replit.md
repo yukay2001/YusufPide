@@ -38,7 +38,7 @@ Preferred communication style: Simple, everyday language.
 - Stock page shows visual warnings when items fall below threshold
 - GET /api/stock/alerts endpoint filters stock items requiring attention
 
-**Table & Order Management System (Latest):**
+**Table & Order Management System:**
 - Restaurant table management for tracking active orders before finalizing as sales
 - Users can add/delete restaurant tables with custom names
 - Each table can have one active order at a time
@@ -50,6 +50,15 @@ Preferred communication style: Simple, everyday language.
 - Tables with active orders cannot be deleted (protection)
 - Cache invalidation ensures UI stays synchronized after all order operations
 - Stock automatically deducted when order items are added
+
+**Kitchen Display System (Latest):**
+- Real-time kitchen display showing all active table orders
+- Orders categorized by age: "Yeni Siparişler" (< 2 minutes) and "Devam Eden Siparişler" (>= 2 minutes)
+- New orders highlighted with red border, "YENİ" badge, and pulse animation
+- Auto-refreshes every 5 seconds to show incoming orders
+- Each order card displays: table name, elapsed time, order items with quantities, and total
+- Helps kitchen staff track incoming orders and prepare meals efficiently
+- GET /api/kitchen/active-orders endpoint returns orders with table and item details
 
 ## System Architecture
 
@@ -72,7 +81,7 @@ Preferred communication style: Simple, everyday language.
 - Design guidelines emphasize clarity, efficiency, and data legibility
 
 **Component Structure:**
-- Page components in `/pages` (Dashboard, NewSales, Products, Expenses, Stock, Reports, Orders)
+- Page components in `/pages` (Dashboard, NewSales, Products, Expenses, Stock, Reports, Orders, KitchenDisplay)
 - Reusable UI components in `/components` (DashboardStats, DataTable, DateFilter, StockAlertNotifications, forms)
 - Shared utilities in `/lib` (queryClient, utils for className merging)
 
