@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import passport from "./auth";
+import { requireAuth, requireRole } from "./auth";
 import { 
   insertProductSchema, 
   insertSaleSchema, 
@@ -13,8 +15,46 @@ import {
   insertOrderItemSchema
 } from "@shared/schema";
 import { z } from "zod";
+import type { User } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Authentication
+  app.post("/api/auth/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: User | false, info: any) => {
+      if (err) {
+        return res.status(500).json({ error: "Giriş sırasında bir hata oluştu" });
+      }
+      if (!user) {
+        return res.status(401).json({ error: info?.message || "Kullanıcı adı veya şifre hatalı" });
+      }
+      req.logIn(user, (err) => {
+        if (err) {
+          return res.status(500).json({ error: "Giriş sırasında bir hata oluştu" });
+        }
+        const { password, ...userWithoutPassword } = user;
+        return res.json(userWithoutPassword);
+      });
+    })(req, res, next);
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ error: "Çıkış sırasında bir hata oluştu" });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  app.get("/api/auth/me", (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Giriş yapmanız gerekiyor" });
+    }
+    const user = req.user as User;
+    const { password, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  });
+
   // Business Sessions
   app.get("/api/sessions", async (_req, res) => {
     try {
