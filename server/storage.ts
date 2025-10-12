@@ -15,6 +15,9 @@ import {
   type RolePermission, type InsertRolePermission
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { roles, permissions, rolePermissions, users as usersTable } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // Business Sessions
@@ -720,7 +723,7 @@ export class MemStorage implements IStorage {
       id,
       username: insertUser.username,
       password: insertUser.password,
-      role: insertUser.role,
+      roleId: insertUser.roleId,
       createdAt: new Date()
     };
     this.users.set(id, user);
@@ -738,6 +741,99 @@ export class MemStorage implements IStorage {
 
   async deleteUser(id: string): Promise<boolean> {
     return this.users.delete(id);
+  }
+
+  // Roles - using database
+  async getRoles(): Promise<Role[]> {
+    return await db.select().from(roles);
+  }
+
+  async getRole(id: string): Promise<Role | undefined> {
+    const result = await db.select().from(roles).where(eq(roles.id, id));
+    return result[0];
+  }
+
+  async getRoleByName(name: string): Promise<Role | undefined> {
+    const result = await db.select().from(roles).where(eq(roles.name, name));
+    return result[0];
+  }
+
+  async createRole(role: InsertRole): Promise<Role> {
+    const result = await db.insert(roles).values(role).returning();
+    return result[0];
+  }
+
+  async updateRole(id: string, update: Partial<InsertRole>): Promise<Role | undefined> {
+    const result = await db.update(roles).set(update).where(eq(roles.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteRole(id: string): Promise<boolean> {
+    const result = await db.delete(roles).where(eq(roles.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Permissions - using database
+  async getPermissions(): Promise<Permission[]> {
+    return await db.select().from(permissions);
+  }
+
+  async getPermission(id: string): Promise<Permission | undefined> {
+    const result = await db.select().from(permissions).where(eq(permissions.id, id));
+    return result[0];
+  }
+
+  async getPermissionByKey(key: string): Promise<Permission | undefined> {
+    const result = await db.select().from(permissions).where(eq(permissions.key, key));
+    return result[0];
+  }
+
+  async createPermission(permission: InsertPermission): Promise<Permission> {
+    const result = await db.insert(permissions).values(permission).returning();
+    return result[0];
+  }
+
+  async updatePermission(id: string, update: Partial<InsertPermission>): Promise<Permission | undefined> {
+    const result = await db.update(permissions).set(update).where(eq(permissions.id, id)).returning();
+    return result[0];
+  }
+
+  async deletePermission(id: string): Promise<boolean> {
+    const result = await db.delete(permissions).where(eq(permissions.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Role Permissions - using database
+  async getRolePermissions(roleId: string): Promise<RolePermission[]> {
+    return await db.select().from(rolePermissions).where(eq(rolePermissions.roleId, roleId));
+  }
+
+  async getUserPermissions(userId: string): Promise<Permission[]> {
+    const user = await this.getUser(userId);
+    if (!user) return [];
+    
+    const result = await db
+      .select({ permission: permissions })
+      .from(rolePermissions)
+      .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+      .where(eq(rolePermissions.roleId, user.roleId));
+    
+    return result.map(r => r.permission);
+  }
+
+  async assignPermissionToRole(roleId: string, permissionId: string): Promise<RolePermission> {
+    const result = await db.insert(rolePermissions).values({ roleId, permissionId }).returning();
+    return result[0];
+  }
+
+  async removePermissionFromRole(roleId: string, permissionId: string): Promise<boolean> {
+    const result = await db.delete(rolePermissions)
+      .where(and(
+        eq(rolePermissions.roleId, roleId),
+        eq(rolePermissions.permissionId, permissionId)
+      ))
+      .returning();
+    return result.length > 0;
   }
 }
 
