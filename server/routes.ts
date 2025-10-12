@@ -739,6 +739,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/kitchen/active-orders", async (_req, res) => {
+    try {
+      const orders = await storage.getActiveOrders();
+      const ordersWithDetails = await Promise.all(
+        orders.map(async (order) => {
+          const table = await storage.getTable(order.tableId);
+          const items = await storage.getOrderItems(order.id);
+          return {
+            order,
+            table,
+            items,
+          };
+        })
+      );
+      res.json(ordersWithDetails);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch active orders" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -74,6 +74,7 @@ export interface IStorage {
   // Orders
   getOrders(tableId?: string): Promise<Order[]>;
   getOrder(id: string): Promise<Order | undefined>;
+  getActiveOrders(): Promise<Order[]>;
   getActiveOrderForTable(tableId: string): Promise<Order | null>;
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrder(id: string, order: Partial<InsertOrder>): Promise<Order | undefined>;
@@ -562,6 +563,11 @@ export class MemStorage implements IStorage {
     const orders = Array.from(this.orders.values());
     const activeOrder = orders.find(o => o.tableId === tableId && o.status === 'active');
     return activeOrder || null;
+  }
+
+  async getActiveOrders(): Promise<Order[]> {
+    const orders = Array.from(this.orders.values());
+    return orders.filter(o => o.status === 'active');
   }
 
   async createOrder(insertOrder: InsertOrder): Promise<Order> {

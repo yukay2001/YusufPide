@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import NewSales from "@/pages/NewSales";
 import Orders from "@/pages/Orders";
+import KitchenDisplay from "@/pages/KitchenDisplay";
 import Products from "@/pages/Products";
 import Expenses from "@/pages/Expenses";
 import Stock from "@/pages/Stock";
@@ -14,7 +15,7 @@ import Reports from "@/pages/Reports";
 import ThemeToggle from "@/components/ThemeToggle";
 import SessionSelector from "@/components/SessionSelector";
 import StockAlertNotifications from "@/components/StockAlertNotifications";
-import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon, Utensils } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon, Utensils, UtensilsCrossed } from "lucide-react";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/sales" component={NewSales} />
       <Route path="/orders" component={Orders} />
+      <Route path="/kitchen" component={KitchenDisplay} />
       <Route path="/products" component={Products} />
       <Route path="/expenses" component={Expenses} />
       <Route path="/stock" component={Stock} />
@@ -38,6 +40,7 @@ function App() {
     { path: "/", label: "Dashboard", icon: LayoutDashboard },
     { path: "/sales", label: "Satış", icon: ShoppingCart },
     { path: "/orders", label: "Siparişler", icon: Utensils },
+    { path: "/kitchen", label: "Mutfak", icon: UtensilsCrossed },
     { path: "/products", label: "Ürünler", icon: TagIcon },
     { path: "/expenses", label: "Gider", icon: TrendingDown },
     { path: "/stock", label: "Stok", icon: Package },
