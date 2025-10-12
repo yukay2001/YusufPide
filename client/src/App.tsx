@@ -17,10 +17,11 @@ import ThemeToggle from "@/components/ThemeToggle";
 import SessionSelector from "@/components/SessionSelector";
 import StockAlertNotifications from "@/components/StockAlertNotifications";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon, Utensils, UtensilsCrossed, LogOut, Users as UsersIcon } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon, Utensils, UtensilsCrossed, LogOut, Users as UsersIcon, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
 import Users from "@/pages/Users";
+import Roles from "@/pages/Roles";
 
 function Router() {
   return (
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/stock" component={Stock} />
       <Route path="/reports" component={Reports} />
       <Route path="/users" component={Users} />
+      <Route path="/roles" component={Roles} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -61,19 +63,20 @@ function AppContent() {
   });
 
   const allNavItems = [
-    { path: "/", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "waiter"] },
-    { path: "/sales", label: "Satış", icon: ShoppingCart, roles: ["admin", "waiter"] },
-    { path: "/orders", label: "Siparişler", icon: Utensils, roles: ["admin", "waiter"] },
-    { path: "/kitchen", label: "Mutfak", icon: UtensilsCrossed, roles: ["admin", "kitchen"] },
-    { path: "/products", label: "Ürünler", icon: TagIcon, roles: ["admin"] },
-    { path: "/expenses", label: "Gider", icon: TrendingDown, roles: ["admin"] },
-    { path: "/stock", label: "Stok", icon: Package, roles: ["admin", "waiter"] },
-    { path: "/reports", label: "Rapor", icon: FileText, roles: ["admin"] },
-    { path: "/users", label: "Kullanıcılar", icon: UsersIcon, roles: ["admin"] },
+    { path: "/", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard" },
+    { path: "/sales", label: "Satış", icon: ShoppingCart, permission: "sales" },
+    { path: "/orders", label: "Siparişler", icon: Utensils, permission: "orders" },
+    { path: "/kitchen", label: "Mutfak", icon: UtensilsCrossed, permission: "kitchen" },
+    { path: "/products", label: "Ürünler", icon: TagIcon, permission: "products" },
+    { path: "/expenses", label: "Gider", icon: TrendingDown, permission: "expenses" },
+    { path: "/stock", label: "Stok", icon: Package, permission: "stock" },
+    { path: "/reports", label: "Rapor", icon: FileText, permission: "reports" },
+    { path: "/users", label: "Kullanıcılar", icon: UsersIcon, permission: "users" },
+    { path: "/roles", label: "Roller", icon: Shield, permission: "roles" },
   ];
 
   const navItems = user
-    ? allNavItems.filter(item => item.roles.includes(user.role))
+    ? allNavItems.filter(item => user.permissions.includes(item.permission))
     : [];
 
   if (isLoading) {
@@ -97,13 +100,13 @@ function AppContent() {
               <h1 className="text-2xl font-bold">Pideci Yönetim Paneli</h1>
               {user && (
                 <p className="text-sm text-muted-foreground mt-1">
-                  Hoş geldiniz, <span className="font-medium">{user.username}</span> ({user.role === "admin" ? "Yönetici" : user.role === "waiter" ? "Garson" : "Mutfak"})
+                  Hoş geldiniz, <span className="font-medium">{user.username}</span> ({user.roleName})
                 </p>
               )}
             </div>
             <div className="flex items-center gap-4 flex-wrap">
-              {user?.role !== "kitchen" && <SessionSelector />}
-              {user?.role !== "kitchen" && <StockAlertNotifications />}
+              {user?.permissions && !user.permissions.includes("kitchen") && <SessionSelector />}
+              {user?.permissions && !user.permissions.includes("kitchen") && <StockAlertNotifications />}
               <ThemeToggle />
               <Button
                 variant="outline"

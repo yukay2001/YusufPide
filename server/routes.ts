@@ -50,13 +50,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.get("/api/auth/me", (req, res) => {
+  app.get("/api/auth/me", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Giriş yapmanız gerekiyor" });
     }
-    const user = req.user as User;
-    const { password, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
+    try {
+      const user = req.user as User;
+      const { password, ...userWithoutPassword } = user;
+      
+      const role = await storage.getRoleById(user.roleId);
+      const permissions = await storage.getRolePermissions(user.roleId);
+      const permissionKeys = permissions.map(p => p.key);
+      
+      res.json({
+        ...userWithoutPassword,
+        roleName: role?.name || "Bilinmiyor",
+        permissions: permissionKeys
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Kullanıcı bilgileri alınamadı" });
+    }
   });
 
   // User Management

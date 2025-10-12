@@ -16,14 +16,20 @@ import { Trash2, UserPlus, Shield, Users as UsersIcon, ChefHat } from "lucide-re
 interface User {
   id: string;
   username: string;
-  role: "admin" | "waiter" | "kitchen";
+  roleId: string;
   createdAt: string;
+}
+
+interface Role {
+  id: string;
+  name: string;
+  description?: string;
 }
 
 const userSchema = z.object({
   username: z.string().min(3, "Kullanıcı adı en az 3 karakter olmalı"),
   password: z.string().min(6, "Şifre en az 6 karakter olmalı"),
-  role: z.enum(["admin", "waiter", "kitchen"], {
+  roleId: z.string({
     required_error: "Rol seçimi gerekli"
   })
 });
@@ -38,12 +44,16 @@ export default function Users() {
     queryKey: ["/api/users"]
   });
 
+  const { data: roles = [], isLoading: rolesLoading } = useQuery<Role[]>({
+    queryKey: ["/api/roles"]
+  });
+
   const form = useForm<UserForm>({
     resolver: zodResolver(userSchema),
     defaultValues: {
       username: "",
       password: "",
-      role: "waiter"
+      roleId: ""
     }
   });
 
@@ -109,30 +119,9 @@ export default function Users() {
     createUserMutation.mutate(data);
   };
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case "admin":
-        return <Shield className="w-4 h-4" />;
-      case "waiter":
-        return <UsersIcon className="w-4 h-4" />;
-      case "kitchen":
-        return <ChefHat className="w-4 h-4" />;
-      default:
-        return null;
-    }
-  };
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "Yönetici";
-      case "waiter":
-        return "Garson";
-      case "kitchen":
-        return "Mutfak";
-      default:
-        return role;
-    }
+  const getRoleName = (roleId: string) => {
+    const role = roles.find(r => r.id === roleId);
+    return role?.name || "Bilinmiyor";
   };
 
   return (
@@ -201,14 +190,14 @@ export default function Users() {
 
                 <FormField
                   control={form.control}
-                  name="role"
+                  name="roleId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Rol</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        disabled={createUserMutation.isPending}
+                        disabled={createUserMutation.isPending || rolesLoading}
                       >
                         <FormControl>
                           <SelectTrigger data-testid="select-user-role">
@@ -216,9 +205,11 @@ export default function Users() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="admin">Yönetici</SelectItem>
-                          <SelectItem value="waiter">Garson</SelectItem>
-                          <SelectItem value="kitchen">Mutfak</SelectItem>
+                          {roles.map((role) => (
+                            <SelectItem key={role.id} value={role.id}>
+                              {role.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -249,7 +240,7 @@ export default function Users() {
         </Dialog>
       </div>
 
-      {isLoading ? (
+      {isLoading || rolesLoading ? (
         <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -275,8 +266,8 @@ export default function Users() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  {getRoleIcon(user.role)}
-                  <span>{getRoleLabel(user.role)}</span>
+                  <Shield className="w-4 h-4" />
+                  <span>{getRoleName(user.roleId)}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
                   Oluşturulma: {new Date(user.createdAt).toLocaleDateString('tr-TR')}

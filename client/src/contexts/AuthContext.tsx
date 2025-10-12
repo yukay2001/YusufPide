@@ -5,7 +5,9 @@ import { useLocation } from "wouter";
 interface User {
   id: string;
   username: string;
-  role: "admin" | "waiter" | "kitchen";
+  roleId: string;
+  roleName: string;
+  permissions: string[];
   createdAt: Date;
 }
 
