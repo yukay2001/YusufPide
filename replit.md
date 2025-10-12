@@ -59,7 +59,8 @@ Preferred communication style: Simple, everyday language.
 - Real-time kitchen display showing active table orders (only orders being prepared, not completed)
 - Orders categorized by age: "Yeni Siparişler" (< 2 minutes) and "Devam Eden Siparişler" (>= 2 minutes)
 - New orders highlighted with red border, "YENİ" badge, and pulse animation
-- Auto-refreshes every 5 seconds to show incoming orders
+- **Immediate updates:** Kitchen display refreshes instantly when orders change (via cache invalidation)
+- Fallback auto-refresh every 5 seconds for reliability
 - Each order card displays: table name, elapsed time, order items with quantities, and total
 - Orders automatically disappear from kitchen when marked as "completed" (food is ready)
 - Helps kitchen staff track incoming orders and prepare meals efficiently

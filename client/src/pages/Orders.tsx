@@ -122,6 +122,7 @@ export default function Orders() {
     onSuccess: (_data, tableId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tables", tableId, "active-order"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/kitchen/active-orders"] });
       toast({ title: "Sipariş başlatıldı" });
     },
     onError: () => {
@@ -139,6 +140,7 @@ export default function Orders() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tables", variables.tableId, "active-order"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/kitchen/active-orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stock"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stock/alerts"] });
       setSelectedProductId("");
@@ -156,6 +158,7 @@ export default function Orders() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tables", variables.tableId, "active-order"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/kitchen/active-orders"] });
     },
     onError: () => {
       toast({ title: "Ürün silinemedi", variant: "destructive" });
@@ -169,6 +172,7 @@ export default function Orders() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tables", variables.tableId, "active-order"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/kitchen/active-orders"] });
       toast({ title: "Sipariş tamamlandı - Hesabı kapatmayı unutmayın" });
       // Don't close dialog - user needs to see "Close Bill" button
     },
@@ -184,6 +188,7 @@ export default function Orders() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tables", variables.tableId, "active-order"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/kitchen/active-orders"] });
       toast({ title: "Sipariş iptal edildi" });
       setSelectedTableId(null);
     },
@@ -199,6 +204,7 @@ export default function Orders() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tables", variables.tableId, "active-order"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/kitchen/active-orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
       toast({ title: "Hesap kapatıldı" });
       setSelectedTableId(null);
