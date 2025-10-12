@@ -59,6 +59,32 @@ export const stock = pgTable("stock", {
   alertThreshold: integer("alert_threshold").default(0),
 });
 
+export const restaurantTables = pgTable("restaurant_tables", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  orderNumber: integer("order_number").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const orders = pgTable("orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tableId: varchar("table_id").notNull().references(() => restaurantTables.id),
+  status: text("status").notNull().default("active"),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull().default("0"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const orderItems = pgTable("order_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull().references(() => orders.id),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  productName: text("product_name").notNull(),
+  quantity: integer("quantity").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+});
+
 // Insert schemas
 export const insertBusinessSessionSchema = createInsertSchema(businessSessions).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true, createdAt: true });
@@ -67,6 +93,9 @@ export const insertSaleSchema = createInsertSchema(sales).omit({ id: true, date:
 export const insertSaleItemSchema = createInsertSchema(saleItems).omit({ id: true, saleId: true });
 export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, date: true, sessionId: true });
 export const insertStockSchema = createInsertSchema(stock).omit({ id: true });
+export const insertRestaurantTableSchema = createInsertSchema(restaurantTables).omit({ id: true, createdAt: true });
+export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true, orderId: true });
 
 // Types
 export type BusinessSession = typeof businessSessions.$inferSelect;
@@ -89,3 +118,12 @@ export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 
 export type Stock = typeof stock.$inferSelect;
 export type InsertStock = z.infer<typeof insertStockSchema>;
+
+export type RestaurantTable = typeof restaurantTables.$inferSelect;
+export type InsertRestaurantTable = z.infer<typeof insertRestaurantTableSchema>;
+
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+
+export type OrderItem = typeof orderItems.$inferSelect;
+export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;

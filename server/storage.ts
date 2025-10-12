@@ -5,7 +5,10 @@ import {
   type Expense, type InsertExpense,
   type Stock, type InsertStock,
   type BusinessSession, type InsertBusinessSession,
-  type Category, type InsertCategory
+  type Category, type InsertCategory,
+  type RestaurantTable, type InsertRestaurantTable,
+  type Order, type InsertOrder,
+  type OrderItem, type InsertOrderItem
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -60,6 +63,27 @@ export interface IStorage {
   updateStockQuantityById(id: string, quantityChange: number): Promise<Stock | undefined>;
   deductStockByName(name: string, quantity: number): Promise<Stock | undefined>;
   deleteStock(id: string): Promise<boolean>;
+
+  // Restaurant Tables
+  getTables(): Promise<RestaurantTable[]>;
+  getTable(id: string): Promise<RestaurantTable | undefined>;
+  createTable(table: InsertRestaurantTable): Promise<RestaurantTable>;
+  updateTable(id: string, table: Partial<InsertRestaurantTable>): Promise<RestaurantTable | undefined>;
+  deleteTable(id: string): Promise<boolean>;
+
+  // Orders
+  getOrders(tableId?: string): Promise<Order[]>;
+  getOrder(id: string): Promise<Order | undefined>;
+  getActiveOrderForTable(tableId: string): Promise<Order | null>;
+  createOrder(order: InsertOrder): Promise<Order>;
+  updateOrder(id: string, order: Partial<InsertOrder>): Promise<Order | undefined>;
+  deleteOrder(id: string): Promise<boolean>;
+
+  // Order Items
+  getOrderItems(orderId: string): Promise<OrderItem[]>;
+  addOrderItem(orderId: string, item: InsertOrderItem): Promise<OrderItem>;
+  updateOrderItem(id: string, item: Partial<InsertOrderItem>): Promise<OrderItem | undefined>;
+  deleteOrderItem(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -70,6 +94,9 @@ export class MemStorage implements IStorage {
   private saleItems: Map<string, SaleItem>;
   private expenses: Map<string, Expense>;
   private stock: Map<string, Stock>;
+  private restaurantTables: Map<string, RestaurantTable>;
+  private orders: Map<string, Order>;
+  private orderItems: Map<string, OrderItem>;
   private activeSessionId: string | null;
 
   constructor() {
@@ -80,6 +107,9 @@ export class MemStorage implements IStorage {
     this.saleItems = new Map();
     this.expenses = new Map();
     this.stock = new Map();
+    this.restaurantTables = new Map();
+    this.orders = new Map();
+    this.orderItems = new Map();
     this.activeSessionId = null;
   }
 
@@ -473,6 +503,154 @@ export class MemStorage implements IStorage {
 
   async deleteStock(id: string): Promise<boolean> {
     return this.stock.delete(id);
+  }
+
+  // Restaurant Tables
+  async getTables(): Promise<RestaurantTable[]> {
+    return Array.from(this.restaurantTables.values())
+      .sort((a, b) => a.orderNumber - b.orderNumber);
+  }
+
+  async getTable(id: string): Promise<RestaurantTable | undefined> {
+    return this.restaurantTables.get(id);
+  }
+
+  async createTable(insertTable: InsertRestaurantTable): Promise<RestaurantTable> {
+    const id = randomUUID();
+    const table: RestaurantTable = {
+      id,
+      name: insertTable.name,
+      orderNumber: insertTable.orderNumber,
+      createdAt: new Date()
+    };
+    this.restaurantTables.set(id, table);
+    return table;
+  }
+
+  async updateTable(id: string, update: Partial<InsertRestaurantTable>): Promise<RestaurantTable | undefined> {
+    const table = this.restaurantTables.get(id);
+    if (!table) return undefined;
+    
+    const updated: RestaurantTable = { ...table, ...update };
+    this.restaurantTables.set(id, updated);
+    return updated;
+  }
+
+  async deleteTable(id: string): Promise<boolean> {
+    const activeOrder = await this.getActiveOrderForTable(id);
+    if (activeOrder) {
+      return false;
+    }
+    return this.restaurantTables.delete(id);
+  }
+
+  // Orders
+  async getOrders(tableId?: string): Promise<Order[]> {
+    const orders = Array.from(this.orders.values());
+    if (tableId) {
+      return orders.filter(o => o.tableId === tableId);
+    }
+    return orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getOrder(id: string): Promise<Order | undefined> {
+    return this.orders.get(id);
+  }
+
+  async getActiveOrderForTable(tableId: string): Promise<Order | null> {
+    const orders = Array.from(this.orders.values());
+    const activeOrder = orders.find(o => o.tableId === tableId && o.status === 'active');
+    return activeOrder || null;
+  }
+
+  async createOrder(insertOrder: InsertOrder): Promise<Order> {
+    const id = randomUUID();
+    const order: Order = {
+      id,
+      tableId: insertOrder.tableId,
+      status: insertOrder.status ?? 'active',
+      total: insertOrder.total ?? '0',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.orders.set(id, order);
+    return order;
+  }
+
+  async updateOrder(id: string, update: Partial<InsertOrder>): Promise<Order | undefined> {
+    const order = this.orders.get(id);
+    if (!order) return undefined;
+    
+    const updated: Order = { 
+      ...order, 
+      ...update,
+      updatedAt: new Date()
+    };
+    this.orders.set(id, updated);
+    return updated;
+  }
+
+  async deleteOrder(id: string): Promise<boolean> {
+    const items = await this.getOrderItems(id);
+    items.forEach(item => this.orderItems.delete(item.id));
+    return this.orders.delete(id);
+  }
+
+  // Order Items
+  async getOrderItems(orderId: string): Promise<OrderItem[]> {
+    return Array.from(this.orderItems.values())
+      .filter(item => item.orderId === orderId);
+  }
+
+  async addOrderItem(orderId: string, insertItem: InsertOrderItem): Promise<OrderItem> {
+    const id = randomUUID();
+    const item: OrderItem = {
+      id,
+      orderId,
+      productId: insertItem.productId,
+      productName: insertItem.productName,
+      quantity: insertItem.quantity,
+      price: insertItem.price,
+      total: insertItem.total
+    };
+    this.orderItems.set(id, item);
+    
+    const order = this.orders.get(orderId);
+    if (order) {
+      const orderItems = await this.getOrderItems(orderId);
+      const total = orderItems.reduce((sum, item) => sum + Number(item.total), 0);
+      await this.updateOrder(orderId, { total: total.toFixed(2) });
+    }
+    
+    return item;
+  }
+
+  async updateOrderItem(id: string, update: Partial<InsertOrderItem>): Promise<OrderItem | undefined> {
+    const item = this.orderItems.get(id);
+    if (!item) return undefined;
+    
+    const updated: OrderItem = { ...item, ...update };
+    this.orderItems.set(id, updated);
+    
+    const orderItems = await this.getOrderItems(item.orderId);
+    const total = orderItems.reduce((sum, oi) => sum + Number(oi.total), 0);
+    await this.updateOrder(item.orderId, { total: total.toFixed(2) });
+    
+    return updated;
+  }
+
+  async deleteOrderItem(id: string): Promise<boolean> {
+    const item = this.orderItems.get(id);
+    if (!item) return false;
+    
+    const deleted = this.orderItems.delete(id);
+    if (deleted) {
+      const orderItems = await this.getOrderItems(item.orderId);
+      const total = orderItems.reduce((sum, oi) => sum + Number(oi.total), 0);
+      await this.updateOrder(item.orderId, { total: total.toFixed(2) });
+    }
+    
+    return deleted;
   }
 }
 
