@@ -17,7 +17,10 @@ import ThemeToggle from "@/components/ThemeToggle";
 import SessionSelector from "@/components/SessionSelector";
 import StockAlertNotifications from "@/components/StockAlertNotifications";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon, Utensils, UtensilsCrossed } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon, Utensils, UtensilsCrossed, LogOut, Users as UsersIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useMutation } from "@tanstack/react-query";
+import Users from "@/pages/Users";
 
 function Router() {
   return (
@@ -31,25 +34,47 @@ function Router() {
       <Route path="/expenses" component={Expenses} />
       <Route path="/stock" component={Stock} />
       <Route path="/reports" component={Reports} />
+      <Route path="/users" component={Users} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
 function AppContent() {
-  const [location] = useLocation();
-  const { isAuthenticated, isLoading } = useAuth();
+  const [location, setLocation] = useLocation();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
-  const navItems = [
-    { path: "/", label: "Dashboard", icon: LayoutDashboard },
-    { path: "/sales", label: "Satış", icon: ShoppingCart },
-    { path: "/orders", label: "Siparişler", icon: Utensils },
-    { path: "/kitchen", label: "Mutfak", icon: UtensilsCrossed },
-    { path: "/products", label: "Ürünler", icon: TagIcon },
-    { path: "/expenses", label: "Gider", icon: TrendingDown },
-    { path: "/stock", label: "Stok", icon: Package },
-    { path: "/reports", label: "Rapor", icon: FileText },
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include"
+      });
+      if (!response.ok) {
+        throw new Error("Çıkış başarısız");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setLocation("/login");
+    }
+  });
+
+  const allNavItems = [
+    { path: "/", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "waiter"] },
+    { path: "/sales", label: "Satış", icon: ShoppingCart, roles: ["admin", "waiter"] },
+    { path: "/orders", label: "Siparişler", icon: Utensils, roles: ["admin", "waiter"] },
+    { path: "/kitchen", label: "Mutfak", icon: UtensilsCrossed, roles: ["admin", "kitchen"] },
+    { path: "/products", label: "Ürünler", icon: TagIcon, roles: ["admin"] },
+    { path: "/expenses", label: "Gider", icon: TrendingDown, roles: ["admin"] },
+    { path: "/stock", label: "Stok", icon: Package, roles: ["admin", "waiter"] },
+    { path: "/reports", label: "Rapor", icon: FileText, roles: ["admin"] },
+    { path: "/users", label: "Kullanıcılar", icon: UsersIcon, roles: ["admin"] },
   ];
+
+  const navItems = user
+    ? allNavItems.filter(item => item.roles.includes(user.role))
+    : [];
 
   if (isLoading) {
     return (
@@ -68,11 +93,28 @@ function AppContent() {
       <header className="sticky top-0 z-50 border-b bg-card">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
-            <h1 className="text-2xl font-bold">Pideci Yönetim Paneli</h1>
+            <div>
+              <h1 className="text-2xl font-bold">Pideci Yönetim Paneli</h1>
+              {user && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Hoş geldiniz, <span className="font-medium">{user.username}</span> ({user.role === "admin" ? "Yönetici" : user.role === "waiter" ? "Garson" : "Mutfak"})
+                </p>
+              )}
+            </div>
             <div className="flex items-center gap-4 flex-wrap">
-              <SessionSelector />
-              <StockAlertNotifications />
+              {user?.role !== "kitchen" && <SessionSelector />}
+              {user?.role !== "kitchen" && <StockAlertNotifications />}
               <ThemeToggle />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+                data-testid="button-logout"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Çıkış
+              </Button>
             </div>
           </div>
           <nav className="flex gap-2 flex-wrap">

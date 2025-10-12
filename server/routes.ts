@@ -12,10 +12,12 @@ import {
   insertCategorySchema,
   insertRestaurantTableSchema,
   insertOrderSchema,
-  insertOrderItemSchema
+  insertOrderItemSchema,
+  insertUserSchema
 } from "@shared/schema";
 import { z } from "zod";
 import type { User } from "@shared/schema";
+import bcrypt from "bcryptjs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication
@@ -53,6 +55,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = req.user as User;
     const { password, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
+  });
+
+  // User Management
+  app.get("/api/users", requireRole("admin"), async (_req, res) => {
+    try {
+      const users = await storage.getUsers();
+      const usersWithoutPasswords = users.map(({ password, ...user }) => user);
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      res.status(500).json({ error: "Kullanıcılar yüklenemedi" });
+    }
+  });
+
+  app.post("/api/users", requireRole("admin"), async (req, res) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      
+      const existingUser = await storage.getUserByUsername(userData.username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Bu kullanıcı adı zaten kullanılıyor" });
+      }
+
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword
+      });
+
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Kullanıcı oluşturulamadı" });
+    }
+  });
+
+  app.delete("/api/users/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const currentUser = req.user as User;
+      if (currentUser.id === id) {
+        return res.status(400).json({ error: "Kendi hesabınızı silemezsiniz" });
+      }
+
+      const deleted = await storage.deleteUser(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Kullanıcı silinemedi" });
+    }
   });
 
   // Business Sessions
