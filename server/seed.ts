@@ -25,11 +25,20 @@ export async function seedInitialData() {
   const existingUsers = await storage.getUsers();
   if (existingUsers.length === 0) {
     console.log("Creating initial admin user...");
+    
+    // Get the Admin role
+    const roles = await storage.getRoles();
+    const adminRole = roles.find(r => r.name === "Admin");
+    
+    if (!adminRole) {
+      throw new Error("Admin role not found. Database may not be properly initialized.");
+    }
+    
     const hashedPassword = await bcrypt.hash("admin123", 10);
     await storage.createUser({
       username: "admin",
       password: hashedPassword,
-      role: "admin"
+      roleId: adminRole.id
     });
     console.log("Initial admin user created successfully! (username: admin, password: admin123)");
   }

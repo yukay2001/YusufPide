@@ -9,7 +9,10 @@ import {
   type RestaurantTable, type InsertRestaurantTable,
   type Order, type InsertOrder,
   type OrderItem, type InsertOrderItem,
-  type User, type InsertUser
+  type User, type InsertUser,
+  type Role, type InsertRole,
+  type Permission, type InsertPermission,
+  type RolePermission, type InsertRolePermission
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -95,6 +98,28 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, user: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
+
+  // Roles
+  getRoles(): Promise<Role[]>;
+  getRole(id: string): Promise<Role | undefined>;
+  getRoleByName(name: string): Promise<Role | undefined>;
+  createRole(role: InsertRole): Promise<Role>;
+  updateRole(id: string, role: Partial<InsertRole>): Promise<Role | undefined>;
+  deleteRole(id: string): Promise<boolean>;
+
+  // Permissions
+  getPermissions(): Promise<Permission[]>;
+  getPermission(id: string): Promise<Permission | undefined>;
+  getPermissionByKey(key: string): Promise<Permission | undefined>;
+  createPermission(permission: InsertPermission): Promise<Permission>;
+  updatePermission(id: string, permission: Partial<InsertPermission>): Promise<Permission | undefined>;
+  deletePermission(id: string): Promise<boolean>;
+
+  // Role Permissions
+  getRolePermissions(roleId: string): Promise<RolePermission[]>;
+  getUserPermissions(userId: string): Promise<Permission[]>;
+  assignPermissionToRole(roleId: string, permissionId: string): Promise<RolePermission>;
+  removePermissionFromRole(roleId: string, permissionId: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {

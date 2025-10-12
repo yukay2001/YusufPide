@@ -85,11 +85,31 @@ export const orderItems = pgTable("order_items", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
 });
 
+// Roles and Permissions for custom RBAC
+export const roles = pgTable("roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const permissions = pgTable("permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(), // e.g., "dashboard", "sales", "orders", etc.
+  name: text("name").notNull(), // Display name e.g., "Dashboard", "Satış"
+  description: text("description"),
+});
+
+export const rolePermissions = pgTable("role_permissions", {
+  roleId: varchar("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
+  permissionId: varchar("permission_id").notNull().references(() => permissions.id, { onDelete: "cascade" }),
+});
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(), // Stores hashed password only
-  role: text("role").notNull(), // "admin", "waiter", or "kitchen"
+  roleId: varchar("role_id").notNull().references(() => roles.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -104,9 +124,10 @@ export const insertStockSchema = createInsertSchema(stock).omit({ id: true });
 export const insertRestaurantTableSchema = createInsertSchema(restaurantTables).omit({ id: true, createdAt: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true, orderId: true });
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true }).extend({
-  role: z.enum(["admin", "waiter", "kitchen"]),
-});
+export const insertRoleSchema = createInsertSchema(roles).omit({ id: true, createdAt: true });
+export const insertPermissionSchema = createInsertSchema(permissions).omit({ id: true });
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions);
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 
 // Types
 export type BusinessSession = typeof businessSessions.$inferSelect;
@@ -141,3 +162,12 @@ export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Role = typeof roles.$inferSelect;
+export type InsertRole = z.infer<typeof insertRoleSchema>;
+
+export type Permission = typeof permissions.$inferSelect;
+export type InsertPermission = z.infer<typeof insertPermissionSchema>;
+
+export type RolePermission = typeof rolePermissions.$inferSelect;
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
