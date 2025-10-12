@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, ShoppingCart, X, Check } from "lucide-react";
 import {
   Select,
@@ -168,8 +169,8 @@ export default function Orders() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tables", variables.tableId, "active-order"] });
-      toast({ title: "Sipariş tamamlandı" });
-      setSelectedTableId(null);
+      toast({ title: "Sipariş tamamlandı - Hesabı kapatmayı unutmayın" });
+      // Don't close dialog - user needs to see "Close Bill" button
     },
     onError: () => {
       toast({ title: "Sipariş tamamlanamadı", variant: "destructive" });
@@ -342,7 +343,16 @@ function TableCard({
       <CardContent>
         {activeOrder ? (
           <div className="space-y-2">
-            <div className="text-sm text-muted-foreground">Aktif Sipariş</div>
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-muted-foreground">
+                {activeOrder.status === 'completed' ? 'Tamamlandı' : 'Aktif Sipariş'}
+              </div>
+              {activeOrder.status === 'completed' && (
+                <Badge variant="secondary" data-testid={`badge-completed-${table.id}`}>
+                  Hazır
+                </Badge>
+              )}
+            </div>
             <div className="text-2xl font-bold">{activeOrder.total} ₺</div>
           </div>
         ) : (
@@ -435,64 +445,66 @@ function OrderDetails({
         <DialogTitle>Sipariş Detayı</DialogTitle>
       </DialogHeader>
       <div className="space-y-6 max-h-[70vh] overflow-y-auto">
-        <div className="space-y-4">
-          <h3 className="font-semibold">Ürün Ekle</h3>
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <Label>Kategori</Label>
-              <Select
-                value={selectedCategoryId || "all"}
-                onValueChange={(value) => setSelectedCategoryId(value === "all" ? null : value)}
+        {activeOrder.status === 'active' && (
+          <div className="space-y-4">
+            <h3 className="font-semibold">Ürün Ekle</h3>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Label>Kategori</Label>
+                <Select
+                  value={selectedCategoryId || "all"}
+                  onValueChange={(value) => setSelectedCategoryId(value === "all" ? null : value)}
+                >
+                  <SelectTrigger data-testid="select-category">
+                    <SelectValue placeholder="Tüm Kategoriler" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm Kategoriler</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Ürün</Label>
+                <Select value={selectedProductId} onValueChange={setSelectedProductId}>
+                  <SelectTrigger data-testid="select-product">
+                    <SelectValue placeholder="Ürün seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name} - {product.price} ₺
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="quantity">Adet</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  data-testid="input-quantity"
+                />
+              </div>
+              <Button
+                onClick={() => onAddItem(activeOrder.id)}
+                className="gap-2"
+                data-testid="button-add-item"
               >
-                <SelectTrigger data-testid="select-category">
-                  <SelectValue placeholder="Tüm Kategoriler" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tüm Kategoriler</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Plus className="w-4 h-4" />
+                Ekle
+              </Button>
             </div>
-            <div>
-              <Label>Ürün</Label>
-              <Select value={selectedProductId} onValueChange={setSelectedProductId}>
-                <SelectTrigger data-testid="select-product">
-                  <SelectValue placeholder="Ürün seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name} - {product.price} ₺
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="quantity">Adet</Label>
-              <Input
-                id="quantity"
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                data-testid="input-quantity"
-              />
-            </div>
-            <Button
-              onClick={() => onAddItem(activeOrder.id)}
-              className="gap-2"
-              data-testid="button-add-item"
-            >
-              <Plus className="w-4 h-4" />
-              Ekle
-            </Button>
           </div>
-        </div>
+        )}
 
         <div className="space-y-4">
           <h3 className="font-semibold">Sipariş İçeriği</h3>
@@ -514,14 +526,16 @@ function OrderDetails({
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="font-bold">{item.total} ₺</div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => onDeleteItem(item.id)}
-                      data-testid={`button-delete-item-${item.id}`}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                    {activeOrder.status === 'active' && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => onDeleteItem(item.id)}
+                        data-testid={`button-delete-item-${item.id}`}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
