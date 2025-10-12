@@ -39,7 +39,7 @@ interface OrderWithDetails {
 export default function KitchenDisplay() {
   const { data: activeOrders = [], refetch } = useQuery<OrderWithDetails[]>({
     queryKey: ["/api/kitchen/active-orders"],
-    refetchInterval: 5000, // Auto-refresh every 5 seconds
+    refetchInterval: 2000, // Auto-refresh every 2 seconds for real-time cross-device updates
   });
 
   // Separate new orders (created in last 2 minutes) from older ones
