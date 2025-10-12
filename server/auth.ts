@@ -48,18 +48,58 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   res.status(401).json({ message: "Giriş yapmanız gerekiyor" });
 }
 
-export function requireRole(...roles: string[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
+export function requireRole(...roleNames: string[]) {
+  return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Giriş yapmanız gerekiyor" });
     }
 
-    const user = req.user as User;
-    if (!roles.includes(user.role)) {
-      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    try {
+      const user = req.user as User;
+      
+      // Get user's role from database
+      const userRole = await storage.getRole(user.roleId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      // Check if user's role is in the allowed roles
+      if (!roleNames.includes(userRole.name)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      next();
+    } catch (error) {
+      return res.status(500).json({ message: "Yetki kontrolü sırasında bir hata oluştu" });
+    }
+  };
+}
+
+// Permission-based middleware for more granular control
+export function requirePermission(...permissionKeys: string[]) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Giriş yapmanız gerekiyor" });
     }
 
-    next();
+    try {
+      const user = req.user as User;
+      
+      // Get user's permissions from database
+      const userPermissions = await storage.getUserPermissions(user.id);
+      const userPermissionKeys = userPermissions.map(p => p.key);
+
+      // Check if user has at least one of the required permissions
+      const hasPermission = permissionKeys.some(key => userPermissionKeys.includes(key));
+      
+      if (!hasPermission) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      next();
+    } catch (error) {
+      return res.status(500).json({ message: "Yetki kontrolü sırasında bir hata oluştu" });
+    }
   };
 }
 

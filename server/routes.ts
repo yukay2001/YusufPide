@@ -13,7 +13,9 @@ import {
   insertRestaurantTableSchema,
   insertOrderSchema,
   insertOrderItemSchema,
-  insertUserSchema
+  insertUserSchema,
+  insertRoleSchema,
+  insertPermissionSchema
 } from "@shared/schema";
 import { z } from "zod";
 import type { User } from "@shared/schema";
@@ -58,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User Management
-  app.get("/api/users", requireRole("admin"), async (_req, res) => {
+  app.get("/api/users", requireRole("Admin"), async (_req, res) => {
     try {
       const users = await storage.getUsers();
       const usersWithoutPasswords = users.map(({ password, ...user }) => user);
@@ -68,7 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users", requireRole("admin"), async (req, res) => {
+  app.post("/api/users", requireRole("Admin"), async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
       
@@ -93,7 +95,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/:id", requireRole("admin"), async (req, res) => {
+  app.delete("/api/users/:id", requireRole("Admin"), async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -109,6 +111,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Kullanıcı silinemedi" });
+    }
+  });
+
+  // Role Management
+  app.get("/api/roles", requireRole("Admin"), async (_req, res) => {
+    try {
+      const roles = await storage.getRoles();
+      res.json(roles);
+    } catch (error) {
+      res.status(500).json({ error: "Roller yüklenemedi" });
+    }
+  });
+
+  app.post("/api/roles", requireRole("Admin"), async (req, res) => {
+    try {
+      const roleData = insertRoleSchema.parse(req.body);
+      const role = await storage.createRole(roleData);
+      res.json(role);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Rol oluşturulamadı" });
+    }
+  });
+
+  app.put("/api/roles/:id", requireRole("Admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const roleData = insertRoleSchema.partial().parse(req.body);
+      const updated = await storage.updateRole(id, roleData);
+      if (!updated) {
+        return res.status(404).json({ error: "Rol bulunamadı" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Rol güncellenemedi" });
+    }
+  });
+
+  app.delete("/api/roles/:id", requireRole("Admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteRole(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Rol bulunamadı" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Rol silinemedi" });
+    }
+  });
+
+  // Permission Management
+  app.get("/api/permissions", requireRole("Admin"), async (_req, res) => {
+    try {
+      const permissions = await storage.getPermissions();
+      res.json(permissions);
+    } catch (error) {
+      res.status(500).json({ error: "İzinler yüklenemedi" });
+    }
+  });
+
+  app.post("/api/permissions", requireRole("Admin"), async (req, res) => {
+    try {
+      const permissionData = insertPermissionSchema.parse(req.body);
+      const permission = await storage.createPermission(permissionData);
+      res.json(permission);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "İzin oluşturulamadı" });
+    }
+  });
+
+  app.put("/api/permissions/:id", requireRole("Admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const permissionData = insertPermissionSchema.partial().parse(req.body);
+      const updated = await storage.updatePermission(id, permissionData);
+      if (!updated) {
+        return res.status(404).json({ error: "İzin bulunamadı" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "İzin güncellenemedi" });
+    }
+  });
+
+  app.delete("/api/permissions/:id", requireRole("Admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deletePermission(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "İzin bulunamadı" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "İzin silinemedi" });
+    }
+  });
+
+  // Role-Permission Assignment
+  app.get("/api/roles/:roleId/permissions", requireRole("Admin"), async (req, res) => {
+    try {
+      const { roleId } = req.params;
+      const rolePermissions = await storage.getRolePermissions(roleId);
+      res.json(rolePermissions);
+    } catch (error) {
+      res.status(500).json({ error: "Rol izinleri yüklenemedi" });
+    }
+  });
+
+  app.post("/api/roles/:roleId/permissions", requireRole("Admin"), async (req, res) => {
+    try {
+      const { roleId } = req.params;
+      const { permissionId } = req.body;
+      
+      if (!permissionId) {
+        return res.status(400).json({ error: "permissionId gerekli" });
+      }
+
+      const assignment = await storage.assignPermissionToRole(roleId, permissionId);
+      res.json(assignment);
+    } catch (error) {
+      res.status(500).json({ error: "İzin atanamadı" });
+    }
+  });
+
+  app.delete("/api/roles/:roleId/permissions/:permissionId", requireRole("Admin"), async (req, res) => {
+    try {
+      const { roleId, permissionId } = req.params;
+      const removed = await storage.removePermissionFromRole(roleId, permissionId);
+      if (!removed) {
+        return res.status(404).json({ error: "İzin bulunamadı" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "İzin kaldırılamadı" });
+    }
+  });
+
+  // Get user permissions (for frontend navigation)
+  app.get("/api/users/:userId/permissions", requireAuth, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const currentUser = req.user as User;
+      
+      // Users can only view their own permissions unless they're admin
+      if (currentUser.id !== userId) {
+        const userRole = await storage.getRole(currentUser.roleId);
+        if (!userRole || userRole.name !== "Admin") {
+          return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+        }
+      }
+      
+      const permissions = await storage.getUserPermissions(userId);
+      res.json(permissions);
+    } catch (error) {
+      res.status(500).json({ error: "Kullanıcı izinleri yüklenemedi" });
     }
   });
 
