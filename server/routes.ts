@@ -1,7 +1,17 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProductSchema, insertSaleSchema, insertExpenseSchema, insertStockSchema, insertBusinessSessionSchema, insertCategorySchema } from "@shared/schema";
+import { 
+  insertProductSchema, 
+  insertSaleSchema, 
+  insertExpenseSchema, 
+  insertStockSchema, 
+  insertBusinessSessionSchema, 
+  insertCategorySchema,
+  insertRestaurantTableSchema,
+  insertOrderSchema,
+  insertOrderItemSchema
+} from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -488,6 +498,239 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(alerts);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch stock alerts" });
+    }
+  });
+
+  // Restaurant Tables
+  app.get("/api/tables", async (_req, res) => {
+    try {
+      const tables = await storage.getTables();
+      res.json(tables);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch tables" });
+    }
+  });
+
+  app.post("/api/tables", async (req, res) => {
+    try {
+      const table = insertRestaurantTableSchema.parse(req.body);
+      const created = await storage.createTable(table);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create table" });
+      }
+    }
+  });
+
+  app.put("/api/tables/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const update = insertRestaurantTableSchema.partial().parse(req.body);
+      const updated = await storage.updateTable(id, update);
+      if (!updated) {
+        res.status(404).json({ error: "Table not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update table" });
+      }
+    }
+  });
+
+  app.delete("/api/tables/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteTable(id);
+      if (!deleted) {
+        res.status(400).json({ error: "Cannot delete table with active orders" });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete table" });
+    }
+  });
+
+  // Orders
+  app.get("/api/orders", async (req, res) => {
+    try {
+      const { tableId } = req.query;
+      const orders = await storage.getOrders(tableId as string | undefined);
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch orders" });
+    }
+  });
+
+  app.get("/api/orders/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const order = await storage.getOrder(id);
+      if (!order) {
+        res.status(404).json({ error: "Order not found" });
+        return;
+      }
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch order" });
+    }
+  });
+
+  app.get("/api/tables/:tableId/active-order", async (req, res) => {
+    try {
+      const { tableId } = req.params;
+      const order = await storage.getActiveOrderForTable(tableId);
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch active order" });
+    }
+  });
+
+  app.post("/api/orders", async (req, res) => {
+    try {
+      const order = insertOrderSchema.parse(req.body);
+      const activeOrder = await storage.getActiveOrderForTable(order.tableId);
+      if (activeOrder) {
+        res.status(400).json({ error: "Table already has an active order" });
+        return;
+      }
+      const created = await storage.createOrder(order);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create order" });
+      }
+    }
+  });
+
+  app.put("/api/orders/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const update = insertOrderSchema.partial().parse(req.body);
+      const updated = await storage.updateOrder(id, update);
+      if (!updated) {
+        res.status(404).json({ error: "Order not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update order" });
+      }
+    }
+  });
+
+  app.delete("/api/orders/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteOrder(id);
+      if (!deleted) {
+        res.status(404).json({ error: "Order not found" });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete order" });
+    }
+  });
+
+  // Order Items
+  app.get("/api/orders/:orderId/items", async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const items = await storage.getOrderItems(orderId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch order items" });
+    }
+  });
+
+  app.post("/api/orders/:orderId/items", async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const itemData = insertOrderItemSchema.parse(req.body);
+      
+      // Fetch product to get current price and name
+      const product = await storage.getProduct(itemData.productId);
+      if (!product) {
+        res.status(404).json({ error: "Product not found" });
+        return;
+      }
+
+      const item = {
+        productId: product.id,
+        productName: product.name,
+        quantity: itemData.quantity,
+        price: product.price,
+        total: (Number(product.price) * itemData.quantity).toFixed(2)
+      };
+
+      const created = await storage.addOrderItem(orderId, item);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to add order item" });
+      }
+    }
+  });
+
+  app.put("/api/order-items/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = insertOrderItemSchema.partial().parse(req.body);
+      
+      // Get the current item to access its price and orderId
+      const currentItem = await storage.getOrderItem(id);
+      if (!currentItem) {
+        res.status(404).json({ error: "Order item not found" });
+        return;
+      }
+      
+      // Recalculate total using current or updated values
+      const finalUpdate = { ...updateData };
+      const quantity = updateData.quantity ?? currentItem.quantity;
+      const price = updateData.price ?? currentItem.price;
+      finalUpdate.total = (Number(price) * quantity).toFixed(2);
+      
+      const updated = await storage.updateOrderItem(id, finalUpdate);
+      if (!updated) {
+        res.status(404).json({ error: "Order item not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update order item" });
+      }
+    }
+  });
+
+  app.delete("/api/order-items/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteOrderItem(id);
+      if (!deleted) {
+        res.status(404).json({ error: "Order item not found" });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete order item" });
     }
   });
 
