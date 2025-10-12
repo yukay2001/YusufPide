@@ -27,6 +27,7 @@ export interface IStorage {
   createBusinessSession(session: InsertBusinessSession): Promise<BusinessSession>;
   setActiveSession(id: string): Promise<BusinessSession | undefined>;
   deactivateAllSessions(): Promise<void>;
+  deleteBusinessSession(id: string): Promise<boolean>;
 
   // Categories
   getCategories(): Promise<Category[]>;
@@ -222,6 +223,34 @@ export class MemStorage implements IStorage {
     
     // Clear active session ID
     this.activeSessionId = null;
+  }
+
+  async deleteBusinessSession(id: string): Promise<boolean> {
+    const session = this.businessSessions.get(id);
+    if (!session) return false;
+    
+    // If this is the active session, clear it
+    if (this.activeSessionId === id) {
+      this.activeSessionId = null;
+    }
+    
+    // Delete associated sales and expenses
+    const sessionSales = Array.from(this.sales.values()).filter(s => s.sessionId === id);
+    sessionSales.forEach(sale => {
+      // Delete sale items first
+      Array.from(this.saleItems.values())
+        .filter(item => item.saleId === sale.id)
+        .forEach(item => this.saleItems.delete(item.id));
+      // Then delete the sale
+      this.sales.delete(sale.id);
+    });
+    
+    // Delete expenses
+    const sessionExpenses = Array.from(this.expenses.values()).filter(e => e.sessionId === id);
+    sessionExpenses.forEach(expense => this.expenses.delete(expense.id));
+    
+    // Finally delete the session
+    return this.businessSessions.delete(id);
   }
 
   // Categories

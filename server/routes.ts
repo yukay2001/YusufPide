@@ -433,6 +433,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete a business session
+  app.delete("/api/sessions/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Check if this is the active session
+      const activeSession = await storage.getActiveSession();
+      if (activeSession && activeSession.id === id) {
+        return res.status(400).json({ error: "Aktif günü silemezsiniz. Önce günü kapatın." });
+      }
+      
+      // Delete the session and all associated data
+      const deleted = await storage.deleteBusinessSession(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Gün bulunamadı" });
+      }
+      
+      res.json({ success: true, message: "Gün başarıyla silindi" });
+    } catch (error) {
+      console.error('Delete session error:', error);
+      res.status(500).json({ error: "Gün silinemedi" });
+    }
+  });
+
   // Generate PDF Report for a session
   app.get("/api/sessions/:id/report", requireAuth, async (req, res) => {
     try {

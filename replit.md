@@ -38,6 +38,7 @@ Preferred communication style: Simple, everyday language.
     - **Users:** Assigned to roles, inheriting permissions, with secure password handling.
 - **Data Seeding:** Initial product catalog, an admin user (`admin`/`admin123`), and an initial business session are created on first run.
 - **Day Control:** Manual start/end day system. Users click "Gün Başlat" to start a new day and "Günü Kapat" to end the current day. Turkish timezone used for session naming.
+- **Session Management:** Users can delete past sessions via "Günleri Yönet" button. Active sessions cannot be deleted (must be ended first). Deleting a session also removes all associated sales and expenses.
 
 ## External Dependencies
 
