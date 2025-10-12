@@ -12,7 +12,24 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-**Session Management & Historical Data Protection (Latest):**
+**Role-Based User Authentication System (Latest):**
+- Implemented complete authentication system with login/logout functionality
+- Three user roles with different access levels:
+  - Administrator (admin): Full access to all features including user management
+  - Waiter (garson): Access to orders, inventory, sales, and stock management
+  - Kitchen (mutfak): Access only to kitchen display for meal preparation
+- Secure password storage using bcrypt hashing (10 salt rounds)
+- Session-based authentication using express-session and passport.js
+- HTTP-only cookies with 24-hour session lifetime
+- User management page for admins to create/delete user accounts
+- Role-based navigation filtering - users only see menu items they have access to
+- Protected routes redirect to login when not authenticated
+- Initial admin account created via seed data (username: admin, password: admin123)
+- Backend routes protected with requireAuth and requireRole middleware
+- Self-deletion prevention for admin users
+- Duplicate username validation
+
+**Session Management & Historical Data Protection:**
 - Removed manual "New Day" button - sessions now only created automatically at midnight Turkish time
 - Implemented read-only protection for past sessions:
   - Frontend detects past sessions by comparing session date to today's date
@@ -87,9 +104,10 @@ Preferred communication style: Simple, everyday language.
 - Design guidelines emphasize clarity, efficiency, and data legibility
 
 **Component Structure:**
-- Page components in `/pages` (Dashboard, NewSales, Products, Expenses, Stock, Reports, Orders, KitchenDisplay)
+- Page components in `/pages` (Dashboard, NewSales, Products, Expenses, Stock, Reports, Orders, KitchenDisplay, Login, Users)
 - Reusable UI components in `/components` (DashboardStats, DataTable, DateFilter, StockAlertNotifications, forms)
 - Shared utilities in `/lib` (queryClient, utils for className merging)
+- Context providers in `/contexts` (AuthContext for authentication state management)
 
 **Key Design Patterns:**
 - Compound component pattern for complex UI (dialogs, dropdowns, forms)
@@ -163,6 +181,11 @@ Preferred communication style: Simple, everyday language.
 - **Order Items:** id, orderId (FK), productId (FK), productName, quantity, price, total
   - Individual items within an order
   - Stock automatically deducted when items are added
+- **Users:** id, username (unique), password (hashed with bcrypt), role (admin/waiter/kitchen), createdAt (timestamp)
+  - Three role types with different access levels
+  - Passwords hashed with bcrypt (10 salt rounds) before storage
+  - Initial admin user created via seed data
+  - Used for authentication and role-based access control
 
 **Storage Implementation:**
 - In-memory storage (MemStorage class) as fallback/development mode
@@ -173,6 +196,16 @@ Preferred communication style: Simple, everyday language.
 - Initial product catalog seeded on first run
 - 12 pre-configured products (pide varieties, cantık, beverages)
 - Seed data includes Turkish menu items with Turkish Lira pricing
+- Initial admin user (username: admin, password: admin123) created on first run
+
+**Authentication & Authorization:**
+- Session-based authentication using express-session and passport.js
+- Passport local strategy for username/password authentication
+- HTTP-only session cookies with 24-hour lifetime
+- Backend route protection with requireAuth and requireRole middleware
+- Frontend AuthProvider manages authentication state across the app
+- Role-based navigation filtering on the frontend
+- Protected routes redirect to login when not authenticated
 
 ### External Dependencies
 
