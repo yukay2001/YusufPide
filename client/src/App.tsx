@@ -21,7 +21,6 @@ import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon
 import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
 import Users from "@/pages/Users";
-import Roles from "@/pages/Roles";
 
 function Router() {
   return (
@@ -36,7 +35,6 @@ function Router() {
       <Route path="/stock" component={Stock} />
       <Route path="/reports" component={Reports} />
       <Route path="/users" component={Users} />
-      <Route path="/roles" component={Roles} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -72,7 +70,6 @@ function AppContent() {
     { path: "/stock", label: "Stok", icon: Package, permission: "stock" },
     { path: "/reports", label: "Rapor", icon: FileText, permission: "reports" },
     { path: "/users", label: "Kullanıcılar", icon: UsersIcon, permission: "users" },
-    { path: "/roles", label: "Roller", icon: Shield, permission: "roles" },
   ];
 
   const navItems = user

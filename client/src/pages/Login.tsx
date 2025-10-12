@@ -132,11 +132,6 @@ export default function Login() {
               </Button>
             </form>
           </Form>
-
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Varsayılan kullanıcı: admin</p>
-            <p>Varsayılan şifre: admin123</p>
-          </div>
         </CardContent>
       </Card>
     </div>

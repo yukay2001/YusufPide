@@ -128,6 +128,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/users/:id/password", requireRole("Admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Mevcut ve yeni şifre gerekli" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "Yeni şifre en az 6 karakter olmalı" });
+      }
+
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+      }
+
+      const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: "Mevcut şifre hatalı" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      const updated = await storage.updateUser(id, { password: hashedPassword });
+      
+      if (!updated) {
+        return res.status(500).json({ error: "Şifre güncellenemedi" });
+      }
+
+      res.json({ success: true, message: "Şifre başarıyla değiştirildi" });
+    } catch (error) {
+      console.error("Password change error:", error);
+      res.status(500).json({ error: "Şifre değiştirilemedi" });
+    }
+  });
+
   // Role Management
   app.get("/api/roles", requireRole("Admin"), async (_req, res) => {
     try {
