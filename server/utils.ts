@@ -1,13 +1,6 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
 /**
  * Get current date in YYYY-MM-DD format using Turkish timezone (Europe/Istanbul)
- * This ensures consistency with backend session creation and validation
+ * This ensures consistency with session creation and validation
  */
 export function getTurkishDate(): string {
   const now = new Date();

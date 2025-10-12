@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { getTurkishDate } from "@/lib/utils";
 import ExpenseForm from "@/components/ExpenseForm";
 import DataTable from "@/components/DataTable";
 import DateFilter from "@/components/DateFilter";
@@ -62,7 +63,8 @@ export default function Expenses() {
     },
   });
 
-  const isReadOnly = activeSession?.date !== new Date().toISOString().split('T')[0];
+  // Check if viewing a past session (using Turkish timezone for consistency)
+  const isReadOnly = activeSession?.date !== getTurkishDate();
 
   const columns = [
     { header: "Tarih", accessor: "date", align: "left" as const },

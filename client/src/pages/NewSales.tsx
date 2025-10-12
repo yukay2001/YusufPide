@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { getTurkishDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -231,7 +232,8 @@ export default function NewSales() {
     total: Number(sale.total).toFixed(2),
   }));
 
-  const isReadOnly = activeSession?.date !== new Date().toISOString().split('T')[0];
+  // Check if viewing a past session (using Turkish timezone for consistency)
+  const isReadOnly = activeSession?.date !== getTurkishDate();
 
   return (
     <div className="space-y-6">

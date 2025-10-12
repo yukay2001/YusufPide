@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import passport from "./auth";
 import { requireAuth, requireRole } from "./auth";
+import { getTurkishDate } from "./utils";
 import { 
   insertProductSchema, 
   insertSaleSchema, 
@@ -663,8 +664,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Check if the active session is today's date
-      const today = new Date().toISOString().split('T')[0];
+      // Check if the active session is today's date (using Turkish timezone)
+      const today = getTurkishDate();
       if (activeSession.date !== today) {
         res.status(403).json({ error: "Cannot create sales for past sessions. Please select today's session." });
         return;
@@ -728,8 +729,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Check if the active session is today's date
-      const today = new Date().toISOString().split('T')[0];
+      // Check if the active session is today's date (using Turkish timezone)
+      const today = getTurkishDate();
       if (activeSession.date !== today) {
         res.status(403).json({ error: "Cannot delete sales from past sessions." });
         return;
@@ -804,8 +805,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Check if the active session is today's date
-      const today = new Date().toISOString().split('T')[0];
+      // Check if the active session is today's date (using Turkish timezone)
+      const today = getTurkishDate();
       if (activeSession.date !== today) {
         res.status(403).json({ error: "Cannot create expenses for past sessions. Please select today's session." });
         return;
@@ -831,8 +832,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Check if the active session is today's date
-      const today = new Date().toISOString().split('T')[0];
+      // Check if the active session is today's date (using Turkish timezone)
+      const today = getTurkishDate();
       if (activeSession.date !== today) {
         res.status(403).json({ error: "Cannot delete expenses from past sessions." });
         return;

@@ -26,17 +26,18 @@ Preferred communication style: Simple, everyday language.
 - **Database:** PostgreSQL, utilizing `@neondatabase/serverless` adapter.
 - **ORM & Schema:** Drizzle ORM for type-safe database operations, with Drizzle Kit for migrations and schema synchronization. Zod schemas are generated from Drizzle schemas for validation.
 - **Data Models:**
-    - **Business Sessions:** Automatic midnight creation, read-only for past dates.
+    - **Business Sessions:** Automatic midnight creation using Turkish timezone (Europe/Istanbul), read-only for past dates. Past session detection uses Turkish timezone consistently across backend and frontend.
     - **Products:** Linkable to stock items, with automatic stock deduction on sale.
-    - **Sales & Sale Items:** Detailed tracking of transactions.
-    - **Expenses:** Categorized expense tracking.
+    - - **Sales & Sale Items:** Detailed tracking of transactions. Operations restricted to current day's session (validated using Turkish timezone).
+    - **Expenses:** Categorized expense tracking. Operations restricted to current day's session (validated using Turkish timezone).
     - **Stock:** Quantity tracking with configurable alert thresholds and real-time notifications.
     - **Categories:** For organizing products and expenses.
     - **Restaurant Tables:** For managing active orders.
-    - **Orders & Order Items:** Two-step completion workflow (complete order, close bill), real-time kitchen display integration, and automatic stock deduction.
+    - **Orders & Order Items:** Two-step completion workflow (complete order, close bill), real-time kitchen display integration, and automatic stock deduction. No date restrictions applied.
     - **Roles & Permissions:** Flexible custom role creation with 10 granular permissions, controlling both UI navigation and API access.
     - **Users:** Assigned to roles, inheriting permissions, with secure password handling.
 - **Data Seeding:** Initial product catalog and an admin user (`admin`/`admin123`) are seeded on first run.
+- **Timezone Handling:** All date comparisons use Turkish timezone (Europe/Istanbul) consistently via shared utility functions (`getTurkishDate()`) in both frontend (`client/src/lib/utils.ts`) and backend (`server/utils.ts`).
 
 ## External Dependencies
 
