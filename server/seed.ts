@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import bcrypt from "bcryptjs";
 
 export async function seedInitialData() {
   // Check if session already exists
@@ -18,6 +19,19 @@ export async function seedInitialData() {
       isActive: true
     });
     console.log("Initial session created successfully!");
+  }
+
+  // Check if admin user already exists
+  const existingUsers = await storage.getUsers();
+  if (existingUsers.length === 0) {
+    console.log("Creating initial admin user...");
+    const hashedPassword = await bcrypt.hash("admin123", 10);
+    await storage.createUser({
+      username: "admin",
+      password: hashedPassword,
+      role: "admin"
+    });
+    console.log("Initial admin user created successfully! (username: admin, password: admin123)");
   }
 
   // Check if categories already exist

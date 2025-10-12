@@ -8,7 +8,8 @@ import {
   type Category, type InsertCategory,
   type RestaurantTable, type InsertRestaurantTable,
   type Order, type InsertOrder,
-  type OrderItem, type InsertOrderItem
+  type OrderItem, type InsertOrderItem,
+  type User, type InsertUser
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -86,6 +87,14 @@ export interface IStorage {
   addOrderItem(orderId: string, item: InsertOrderItem): Promise<OrderItem>;
   updateOrderItem(id: string, item: Partial<InsertOrderItem>): Promise<OrderItem | undefined>;
   deleteOrderItem(id: string): Promise<boolean>;
+
+  // Users
+  getUsers(): Promise<User[]>;
+  getUser(id: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, user: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -99,6 +108,7 @@ export class MemStorage implements IStorage {
   private restaurantTables: Map<string, RestaurantTable>;
   private orders: Map<string, Order>;
   private orderItems: Map<string, OrderItem>;
+  private users: Map<string, User>;
   private activeSessionId: string | null;
 
   constructor() {
@@ -112,6 +122,7 @@ export class MemStorage implements IStorage {
     this.restaurantTables = new Map();
     this.orders = new Map();
     this.orderItems = new Map();
+    this.users = new Map();
     this.activeSessionId = null;
   }
 
@@ -662,6 +673,46 @@ export class MemStorage implements IStorage {
     }
     
     return deleted;
+  }
+
+  // Users
+  async getUsers(): Promise<User[]> {
+    return Array.from(this.users.values())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getUser(id: string): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(u => u.username === username);
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = randomUUID();
+    const user: User = {
+      id,
+      username: insertUser.username,
+      password: insertUser.password,
+      role: insertUser.role,
+      createdAt: new Date()
+    };
+    this.users.set(id, user);
+    return user;
+  }
+
+  async updateUser(id: string, update: Partial<InsertUser>): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    const updated: User = { ...user, ...update };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    return this.users.delete(id);
   }
 }
 
