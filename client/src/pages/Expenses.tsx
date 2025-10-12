@@ -64,7 +64,16 @@ export default function Expenses() {
   });
 
   // Check if viewing a past session (using Turkish timezone for consistency)
-  const isReadOnly = activeSession?.date.split('T')[0] !== getTurkishDate();
+  const sessionDate = activeSession?.date.split('T')[0];
+  const todayDate = getTurkishDate();
+  const isReadOnly = sessionDate !== todayDate;
+  
+  // Debug logging
+  if (activeSession) {
+    console.log('[Expenses] Session date:', sessionDate);
+    console.log('[Expenses] Today date:', todayDate);
+    console.log('[Expenses] Is readonly:', isReadOnly);
+  }
 
   const columns = [
     { header: "Tarih", accessor: "date", align: "left" as const },

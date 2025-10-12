@@ -233,7 +233,16 @@ export default function NewSales() {
   }));
 
   // Check if viewing a past session (using Turkish timezone for consistency)
-  const isReadOnly = activeSession?.date.split('T')[0] !== getTurkishDate();
+  const sessionDate = activeSession?.date.split('T')[0];
+  const todayDate = getTurkishDate();
+  const isReadOnly = sessionDate !== todayDate;
+  
+  // Debug logging
+  if (activeSession) {
+    console.log('[NewSales] Session date:', sessionDate);
+    console.log('[NewSales] Today date:', todayDate);
+    console.log('[NewSales] Is readonly:', isReadOnly);
+  }
 
   return (
     <div className="space-y-6">

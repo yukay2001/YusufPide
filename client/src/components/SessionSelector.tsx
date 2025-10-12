@@ -68,8 +68,18 @@ export default function SessionSelector() {
   const isViewingPastSession = activeSession && sessions.some(session => {
     const currentDate = activeSession.date.split('T')[0];
     const otherDate = session.date.split('T')[0];
-    return otherDate > currentDate;
+    const isPast = otherDate > currentDate;
+    if (isPast) {
+      console.log('[SessionSelector] Current session:', currentDate, 'has later session:', otherDate);
+    }
+    return isPast;
   });
+  
+  // Debug logging
+  if (activeSession) {
+    console.log('[SessionSelector] Active session date:', activeSession.date.split('T')[0]);
+    console.log('[SessionSelector] Is past session:', isViewingPastSession);
+  }
 
   return (
     <div className="flex flex-col gap-2">
