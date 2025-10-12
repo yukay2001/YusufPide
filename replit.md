@@ -1,247 +1,48 @@
 # Pideci Management Panel
 
 ## Overview
-
-A restaurant management system designed for pide (Turkish flatbread) restaurants. The application tracks sales, expenses, stock inventory, and generates reports for business analytics. Built with a modern tech stack featuring React frontend, Express backend, and PostgreSQL database with Drizzle ORM.
-
-The system provides real-time business metrics including total sales, expenses, net profit calculations, and critical stock alerts. It features a clean, productivity-focused interface inspired by modern design systems like Linear and Notion.
+The Pideci Management Panel is a restaurant management system specifically designed for pide (Turkish flatbread) restaurants. Its primary purpose is to streamline operations by tracking sales, expenses, and inventory. The system also generates comprehensive reports for business analytics, providing real-time metrics such as total sales, net profit, and critical stock alerts. It aims to offer a clean, efficient, and productivity-focused user experience inspired by modern design systems.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
-
-## Recent Changes
-
-**Role-Based User Authentication System (Latest):**
-- Implemented complete authentication system with login/logout functionality
-- Three user roles with different access levels:
-  - Administrator (admin): Full access to all features including user management
-  - Waiter (garson): Access to orders, inventory, sales, and stock management
-  - Kitchen (mutfak): Access only to kitchen display for meal preparation
-- Secure password storage using bcrypt hashing (10 salt rounds)
-- Session-based authentication using express-session and passport.js
-- HTTP-only cookies with 24-hour session lifetime
-- User management page for admins to create/delete user accounts
-- Role-based navigation filtering - users only see menu items they have access to
-- Protected routes redirect to login when not authenticated
-- Initial admin account created via seed data (username: admin, password: admin123)
-- Backend routes protected with requireAuth and requireRole middleware
-- Self-deletion prevention for admin users
-- Duplicate username validation
-
-**Session Management & Historical Data Protection:**
-- Removed manual "New Day" button - sessions now only created automatically at midnight Turkish time
-- Implemented read-only protection for past sessions:
-  - Frontend detects past sessions by comparing session date to today's date
-  - All create/edit/delete UI controls disabled when viewing historical sessions
-  - Backend POST endpoints validate active session date = today before allowing creation
-  - Backend DELETE endpoints verify both session date and record ownership before deletion
-  - Visual warning banner shown when viewing read-only historical data
-- Users can view but not modify sales and expenses from previous days
-
-**Stock Management System:**
-- Added manual product-to-stock item linking (preference-based, not automatic)
-- Products page includes dropdown to select which stock item (if any) each product uses
-- When a sale is made, stock automatically decreases from the linked stock item
-- Products can be set to "Stok kullanmıyor" (no stock) to opt out of stock tracking
-- Stock deduction logic uses ID-based lookup (updateStockQuantityById) for reliability
-- Improved from name-based to ID-based deduction for better performance and robustness
-
-**Stock Alert & Notification System:**
-- Added alert threshold field to stock items - users can set custom low-stock thresholds
-- Real-time notification panel in header shows items below alert threshold
-- Bell icon with badge count displays number of low stock alerts
-- Notification panel auto-refreshes every 30 seconds
-- Stock page shows visual warnings when items fall below threshold
-- GET /api/stock/alerts endpoint filters stock items requiring attention
-
-**Table & Order Management System (Latest):**
-- Restaurant table management for tracking active orders before finalizing as sales
-- Users can add/delete restaurant tables with custom names
-- Each table can have one active order at a time
-- Order dialog allows adding products to active orders with category filtering
-- Real-time order total calculation as items are added/removed
-- **Two-step order completion workflow:**
-  - Step 1: "Siparişi Tamamla" (Complete Order) - Marks order as ready/completed, stays visible on table
-  - Step 2: "Hesabı Kapat" (Close Bill) - Finalizes payment, creates sale, clears table
-- Active orders: Can add/remove items, appear in kitchen display
-- Completed orders: Read-only (no add/delete), removed from kitchen, show "Hazır" badge
-- Orders can be cancelled (with confirmation) at any stage
-- Table cards show status: "Boş" (empty), "Aktif Sipariş" (active), or "Tamamlandı" (completed with badge)
-- Tables with active orders cannot be deleted (protection)
-- Cache invalidation ensures UI stays synchronized after all order operations
-- Stock automatically deducted when order items are added
-
-**Kitchen Display System:**
-- Real-time kitchen display showing active table orders (only orders being prepared, not completed)
-- Orders categorized by age: "Yeni Siparişler" (< 2 minutes) and "Devam Eden Siparişler" (>= 2 minutes)
-- New orders highlighted with red border, "YENİ" badge, and pulse animation
-- **Multi-device support:** Kitchen display auto-refreshes every 2 seconds to show orders from other devices
-- **Immediate updates on same device:** Kitchen refreshes instantly when local orders change (via cache invalidation)
-- Each order card displays: table name, elapsed time, order items with quantities, and total
-- Orders automatically disappear from kitchen when marked as "completed" (food is ready)
-- Helps kitchen staff track incoming orders and prepare meals efficiently
-- GET /api/kitchen/active-orders endpoint returns only active orders with table and item details
 
 ## System Architecture
 
 ### Frontend Architecture
-
-**Framework & Build System:**
-- React 18 with TypeScript for type-safe component development
-- Vite as the build tool and development server
-- Wouter for client-side routing (lightweight alternative to React Router)
-
-**State Management & Data Fetching:**
-- TanStack Query (React Query) for server state management and caching
-- Custom query client with automatic refetching disabled (staleTime: Infinity)
-- Optimistic updates pattern for mutations with query invalidation
-
-**UI Components & Styling:**
-- Shadcn UI component library with Radix UI primitives
-- Tailwind CSS for utility-first styling with custom design tokens
-- Custom theme system supporting light/dark modes stored in localStorage
-- Design guidelines emphasize clarity, efficiency, and data legibility
-
-**Component Structure:**
-- Page components in `/pages` (Dashboard, NewSales, Products, Expenses, Stock, Reports, Orders, KitchenDisplay, Login, Users)
-- Reusable UI components in `/components` (DashboardStats, DataTable, DateFilter, StockAlertNotifications, forms)
-- Shared utilities in `/lib` (queryClient, utils for className merging)
-- Context providers in `/contexts` (AuthContext for authentication state management)
-
-**Key Design Patterns:**
-- Compound component pattern for complex UI (dialogs, dropdowns, forms)
-- Hook-based architecture for shared logic (use-toast, use-mobile)
-- Form validation with React Hook Form and Zod resolvers
+- **Frameworks & Build:** React 18 with TypeScript, Vite for build and development, Wouter for lightweight routing.
+- **State Management & Data:** TanStack Query for server state management and caching, utilizing optimistic updates and query invalidation.
+- **UI & Styling:** Shadcn UI components built on Radix UI primitives, styled with Tailwind CSS. Features a custom theme system supporting light/dark modes.
+- **Design Principles:** Emphasizes clarity, efficiency, and data legibility.
+- **Component Structure:** Organized into pages, reusable components, shared utilities, and context providers (e.g., `AuthContext` for authentication and permissions).
+- **Key Design Patterns:** Compound component pattern for complex UI, hook-based architecture for shared logic, and form validation using React Hook Form with Zod.
 
 ### Backend Architecture
-
-**Server Framework:**
-- Express.js with TypeScript for type-safe API routes
-- ESM module system (type: "module" in package.json)
-- Custom logging middleware tracking request duration and response data
-
-**API Design:**
-- RESTful API endpoints under `/api` prefix
-- Resource-based routing (products, sales, expenses, stock)
-- Zod schemas for runtime validation of request payloads
-- Error handling with appropriate HTTP status codes
-
-**Route Structure:**
-- GET `/api/products` - Fetch all products
-- POST `/api/products` - Create new product
-- PUT `/api/products/:id` - Update product
-- DELETE `/api/products/:id` - Delete product
-- Similar patterns for sales, expenses, and stock endpoints
-
-**Middleware Stack:**
-- JSON body parsing with express.json()
-- URL-encoded form parsing
-- Request/response logging for API routes
-- Error handling middleware with status code extraction
-
-**Development Features:**
-- Vite integration for HMR in development
-- Replit-specific plugins (cartographer, dev-banner, runtime-error-modal)
-- Automatic database seeding on server start
+- **Server Framework:** Express.js with TypeScript for type-safe API routes, using ESM module system.
+- **API Design:** RESTful API under `/api` prefix, with resource-based routing. Utilizes Zod schemas for runtime validation of request payloads and handles errors with appropriate HTTP status codes.
+- **Middleware:** Includes JSON body parsing, URL-encoded form parsing, request/response logging, and comprehensive error handling.
+- **Authentication & Authorization:** Session-based authentication via `express-session` and `passport.js` (local strategy). Implements custom Role-Based Access Control (RBAC) with `requireAuth` and `requireRole` middleware for endpoint protection. Passwords are hashed with bcrypt.
 
 ### Data Storage & Persistence
+- **Database:** PostgreSQL, utilizing `@neondatabase/serverless` adapter.
+- **ORM & Schema:** Drizzle ORM for type-safe database operations, with Drizzle Kit for migrations and schema synchronization. Zod schemas are generated from Drizzle schemas for validation.
+- **Data Models:**
+    - **Business Sessions:** Automatic midnight creation, read-only for past dates.
+    - **Products:** Linkable to stock items, with automatic stock deduction on sale.
+    - **Sales & Sale Items:** Detailed tracking of transactions.
+    - **Expenses:** Categorized expense tracking.
+    - **Stock:** Quantity tracking with configurable alert thresholds and real-time notifications.
+    - **Categories:** For organizing products and expenses.
+    - **Restaurant Tables:** For managing active orders.
+    - **Orders & Order Items:** Two-step completion workflow (complete order, close bill), real-time kitchen display integration, and automatic stock deduction.
+    - **Roles & Permissions:** Flexible custom role creation with 10 granular permissions, controlling both UI navigation and API access.
+    - **Users:** Assigned to roles, inheriting permissions, with secure password handling.
+- **Data Seeding:** Initial product catalog and an admin user (`admin`/`admin123`) are seeded on first run.
 
-**Database:**
-- PostgreSQL as the primary database
-- Neon serverless PostgreSQL adapter (@neondatabase/serverless)
-- Connection via DATABASE_URL environment variable
+## External Dependencies
 
-**ORM & Schema Management:**
-- Drizzle ORM for type-safe database operations
-- Schema definition in `/shared/schema.ts` with automatic TypeScript types
-- Drizzle Kit for migrations and schema synchronization
-- Zod schemas generated from Drizzle schemas for validation
-
-**Data Models:**
-- **Business Sessions:** id, date (unique date), isActive (boolean), createdAt (timestamp)
-  - Automatically created at midnight Turkish time
-  - Only one session can be active at a time
-  - Sessions are read-only once the date has passed
-- **Products:** id, name, price (decimal), categoryId (FK, optional), stockItemId (FK, optional)
-  - Manual stock item linking: Users choose which stock item (if any) each product uses
-  - When a product is sold, stock decreases from the linked stock item
-- **Sales:** id, sessionId (FK), date (timestamp), total (decimal)
-- **Sale Items:** id, saleId (FK), productId (FK), productName, quantity, price, total
-- **Expenses:** id, sessionId (FK), date (timestamp), category, amount (decimal)
-- **Stock:** id, name (unique), quantity (integer), alertThreshold (integer, optional)
-  - Alert threshold triggers low-stock notifications when quantity falls below threshold
-- **Categories:** id, name (unique)
-- **Restaurant Tables:** id, name (unique), createdAt (timestamp)
-  - Physical restaurant tables that can have active orders
-  - Cannot be deleted if they have an active order
-- **Orders:** id, tableId (FK), status (active/completed), total (decimal), createdAt, updatedAt
-  - One active order per table at a time
-  - Automatically recalculates total when items are added/removed
-- **Order Items:** id, orderId (FK), productId (FK), productName, quantity, price, total
-  - Individual items within an order
-  - Stock automatically deducted when items are added
-- **Users:** id, username (unique), password (hashed with bcrypt), role (admin/waiter/kitchen), createdAt (timestamp)
-  - Three role types with different access levels
-  - Passwords hashed with bcrypt (10 salt rounds) before storage
-  - Initial admin user created via seed data
-  - Used for authentication and role-based access control
-
-**Storage Implementation:**
-- In-memory storage (MemStorage class) as fallback/development mode
-- Interface-based storage design (IStorage) for easy swapping
-- UUID generation for primary keys using PostgreSQL gen_random_uuid()
-
-**Data Seeding:**
-- Initial product catalog seeded on first run
-- 12 pre-configured products (pide varieties, cantık, beverages)
-- Seed data includes Turkish menu items with Turkish Lira pricing
-- Initial admin user (username: admin, password: admin123) created on first run
-
-**Authentication & Authorization:**
-- Session-based authentication using express-session and passport.js
-- Passport local strategy for username/password authentication
-- HTTP-only session cookies with 24-hour lifetime
-- Backend route protection with requireAuth and requireRole middleware
-- Frontend AuthProvider manages authentication state across the app
-- Role-based navigation filtering on the frontend
-- Protected routes redirect to login when not authenticated
-
-### External Dependencies
-
-**UI & Component Libraries:**
-- Radix UI primitives (dialogs, dropdowns, popovers, etc.)
-- Shadcn UI configuration via components.json
-- Lucide React for icon set
-- Class Variance Authority (CVA) for component variants
-- cmdk for command palette functionality
-
-**Form & Validation:**
-- React Hook Form for form state management
-- Zod for schema validation
-- @hookform/resolvers for Zod integration
-- drizzle-zod for automatic schema generation
-
-**Date & Time:**
-- date-fns for date manipulation and formatting
-
-**Database & ORM:**
-- @neondatabase/serverless for PostgreSQL connection
-- Drizzle ORM (drizzle-orm) for queries
-- Drizzle Kit (drizzle-kit) for migrations
-
-**Development Tools:**
-- tsx for TypeScript execution
-- esbuild for production bundling
-- Replit-specific Vite plugins for development experience
-
-**Styling:**
-- Tailwind CSS with PostCSS
-- Autoprefixer for CSS compatibility
-- Custom color system with CSS variables for theming
-
-**Build Configuration:**
-- TypeScript with strict mode enabled
-- Path aliases (@/, @shared/, @assets/) for clean imports
-- Vite configuration with custom root and output directories
-- Separate client and server build processes
+- **UI & Component Libraries:** Radix UI, Shadcn UI, Lucide React, Class Variance Authority (CVA), cmdk.
+- **Form & Validation:** React Hook Form, Zod, @hookform/resolvers, drizzle-zod.
+- **Date & Time:** date-fns.
+- **Database & ORM:** @neondatabase/serverless, drizzle-orm, drizzle-kit.
+- **Development Tools:** tsx, esbuild.
+- **Styling:** Tailwind CSS, PostCSS, Autoprefixer.
