@@ -470,8 +470,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalExpenses = sessionExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
       const netProfit = totalSales - totalExpenses;
 
-      // Create PDF
+      // Create PDF with Turkish font support
       const doc = new PDFDocument({ margin: 50 });
+      
+      // Register DejaVu Sans font for Turkish character support
+      doc.registerFont('DejaVu', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf');
+      doc.registerFont('DejaVu-Bold', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf');
       
       // Set response headers
       res.setHeader('Content-Type', 'application/pdf');
@@ -480,30 +484,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Pipe PDF to response
       doc.pipe(res);
 
+      // Use DejaVu font for all text
+      doc.font('DejaVu-Bold');
+      
       // Header
       doc.fontSize(20).text('Pideci Yönetim Paneli', { align: 'center' });
       doc.fontSize(16).text('Günlük Rapor', { align: 'center' });
       doc.moveDown();
-      doc.fontSize(12).text(`Tarih: ${session.name}`, { align: 'center' });
+      doc.font('DejaVu').fontSize(12).text(`Tarih: ${session.name}`, { align: 'center' });
       doc.moveDown(2);
 
       // Summary
-      doc.fontSize(14).text('Özet', { underline: true });
+      doc.font('DejaVu-Bold').fontSize(14).text('Özet', { underline: true });
       doc.moveDown();
-      doc.fontSize(12);
+      doc.font('DejaVu').fontSize(12);
       doc.text(`Toplam Satış: ${totalSales.toFixed(2)} ₺`);
       doc.text(`Toplam Gider: ${totalExpenses.toFixed(2)} ₺`);
       doc.text(`Net Kâr: ${netProfit.toFixed(2)} ₺`);
       doc.moveDown(2);
 
       // Sales Details
-      doc.fontSize(14).text('Satış Detayları', { underline: true });
+      doc.font('DejaVu-Bold').fontSize(14).text('Satış Detayları', { underline: true });
       doc.moveDown();
       
       if (sessionSales.length === 0) {
-        doc.fontSize(12).text('Bu gün için satış kaydı bulunmamaktadır.');
+        doc.font('DejaVu').fontSize(12).text('Bu gün için satış kaydı bulunmamaktadır.');
       } else {
-        doc.fontSize(10);
+        doc.font('DejaVu').fontSize(10);
         sessionSales.forEach((sale, index) => {
           doc.text(`Satış #${index + 1} - Toplam: ${Number(sale.total).toFixed(2)} ₺`);
           const items = saleItemsMap.get(sale.id) || [];
@@ -516,13 +523,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       doc.moveDown(2);
 
       // Expenses
-      doc.fontSize(14).text('Gider Detayları', { underline: true });
+      doc.font('DejaVu-Bold').fontSize(14).text('Gider Detayları', { underline: true });
       doc.moveDown();
       
       if (sessionExpenses.length === 0) {
-        doc.fontSize(12).text('Bu gün için gider kaydı bulunmamaktadır.');
+        doc.font('DejaVu').fontSize(12).text('Bu gün için gider kaydı bulunmamaktadır.');
       } else {
-        doc.fontSize(10);
+        doc.font('DejaVu').fontSize(10);
         sessionExpenses.forEach((expense, index) => {
           doc.text(`${index + 1}. ${expense.category} - ${Number(expense.amount).toFixed(2)} ₺`);
         });
@@ -530,9 +537,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       doc.moveDown(2);
 
       // Stock Status
-      doc.fontSize(14).text('Stok Durumu', { underline: true });
+      doc.font('DejaVu-Bold').fontSize(14).text('Stok Durumu', { underline: true });
       doc.moveDown();
-      doc.fontSize(10);
+      doc.font('DejaVu').fontSize(10);
       
       if (stock.length === 0) {
         doc.text('Stok kaydı bulunmamaktadır.');
@@ -546,7 +553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Footer
       doc.moveDown(3);
-      doc.fontSize(8).text(`Rapor oluşturulma tarihi: ${new Date().toLocaleString('tr-TR')}`, { align: 'center' });
+      doc.font('DejaVu').fontSize(8).text(`Rapor oluşturulma tarihi: ${new Date().toLocaleString('tr-TR')}`, { align: 'center' });
 
       // Finalize PDF
       doc.end();
