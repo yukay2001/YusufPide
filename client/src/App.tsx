@@ -12,14 +12,17 @@ import Products from "@/pages/Products";
 import Expenses from "@/pages/Expenses";
 import Stock from "@/pages/Stock";
 import Reports from "@/pages/Reports";
+import Login from "@/pages/Login";
 import ThemeToggle from "@/components/ThemeToggle";
 import SessionSelector from "@/components/SessionSelector";
 import StockAlertNotifications from "@/components/StockAlertNotifications";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon, Utensils, UtensilsCrossed } from "lucide-react";
 
 function Router() {
   return (
     <Switch>
+      <Route path="/login" component={Login} />
       <Route path="/" component={Dashboard} />
       <Route path="/sales" component={NewSales} />
       <Route path="/orders" component={Orders} />
@@ -33,8 +36,9 @@ function Router() {
   );
 }
 
-function App() {
+function AppContent() {
   const [location] = useLocation();
+  const { isAuthenticated, isLoading } = useAuth();
 
   const navItems = [
     { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -47,47 +51,67 @@ function App() {
     { path: "/reports", label: "Rapor", icon: FileText },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-muted-foreground">Yükleniyor...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Router />;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-50 border-b bg-card">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+            <h1 className="text-2xl font-bold">Pideci Yönetim Paneli</h1>
+            <div className="flex items-center gap-4 flex-wrap">
+              <SessionSelector />
+              <StockAlertNotifications />
+              <ThemeToggle />
+            </div>
+          </div>
+          <nav className="flex gap-2 flex-wrap">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.path;
+              return (
+                <Link key={item.path} href={item.path}>
+                  <button
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "hover-elevate active-elevate-2"
+                    }`}
+                    data-testid={`nav-${item.label.toLowerCase()}`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </button>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      </header>
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        <Router />
+      </main>
+    </div>
+  );
+}
+
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="min-h-screen bg-background">
-          <header className="sticky top-0 z-50 border-b bg-card">
-            <div className="max-w-7xl mx-auto px-4 py-4">
-              <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
-                <h1 className="text-2xl font-bold">Pideci Yönetim Paneli</h1>
-                <div className="flex items-center gap-4 flex-wrap">
-                  <SessionSelector />
-                  <StockAlertNotifications />
-                  <ThemeToggle />
-                </div>
-              </div>
-              <nav className="flex gap-2 flex-wrap">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = location === item.path;
-                  return (
-                    <Link key={item.path} href={item.path}>
-                      <button
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
-                          isActive
-                            ? "bg-primary text-primary-foreground"
-                            : "hover-elevate active-elevate-2"
-                        }`}
-                        data-testid={`nav-${item.label.toLowerCase()}`}
-                      >
-                        <Icon className="w-4 h-4" />
-                        {item.label}
-                      </button>
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-          </header>
-          <main className="max-w-7xl mx-auto px-4 py-6">
-            <Router />
-          </main>
-        </div>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
