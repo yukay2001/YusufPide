@@ -58,8 +58,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as User;
       const { password, ...userWithoutPassword } = user;
       
-      const role = await storage.getRoleById(user.roleId);
-      const permissions = await storage.getRolePermissions(user.roleId);
+      const role = await storage.getRole(user.roleId);
+      const permissions = await storage.getUserPermissions(user.id);
       const permissionKeys = permissions.map(p => p.key);
       
       res.json({
@@ -68,6 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         permissions: permissionKeys
       });
     } catch (error) {
+      console.error("Error in /api/auth/me:", error);
       res.status(500).json({ error: "Kullanıcı bilgileri alınamadı" });
     }
   });
