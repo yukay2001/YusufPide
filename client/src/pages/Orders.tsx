@@ -191,6 +191,22 @@ export default function Orders() {
     },
   });
 
+  const closeBillMutation = useMutation({
+    mutationFn: async ({ orderId, tableId }: { orderId: string; tableId: string }) => {
+      return await apiRequest("POST", `/api/orders/${orderId}/close-bill`);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tables", variables.tableId, "active-order"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      toast({ title: "Hesap kapatıldı" });
+      setSelectedTableId(null);
+    },
+    onError: () => {
+      toast({ title: "Hesap kapatılamadı", variant: "destructive" });
+    },
+  });
+
   const filteredProducts = selectedCategoryId
     ? products.filter(p => p.categoryId === selectedCategoryId)
     : products;
@@ -282,6 +298,7 @@ export default function Orders() {
               onDeleteItem={(itemId) => deleteOrderItemMutation.mutate({ itemId, tableId: selectedTableId })}
               onCompleteOrder={(orderId) => completeOrderMutation.mutate({ orderId, tableId: selectedTableId })}
               onCancelOrder={(orderId) => cancelOrderMutation.mutate({ orderId, tableId: selectedTableId })}
+              onCloseBill={(orderId) => closeBillMutation.mutate({ orderId, tableId: selectedTableId })}
             />
           )}
         </DialogContent>
@@ -371,6 +388,7 @@ function OrderDetails({
   onDeleteItem,
   onCompleteOrder,
   onCancelOrder,
+  onCloseBill,
 }: {
   tableId: string;
   products: Product[];
@@ -385,6 +403,7 @@ function OrderDetails({
   onDeleteItem: (itemId: string) => void;
   onCompleteOrder: (orderId: string) => void;
   onCancelOrder: (orderId: string) => void;
+  onCloseBill: (orderId: string) => void;
 }) {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   
@@ -527,14 +546,25 @@ function OrderDetails({
           <X className="w-4 h-4" />
           İptal
         </Button>
-        <Button
-          onClick={() => onCompleteOrder(activeOrder.id)}
-          className="gap-2"
-          data-testid="button-complete-order"
-        >
-          <Check className="w-4 h-4" />
-          Tamamla
-        </Button>
+        {activeOrder.status === 'active' ? (
+          <Button
+            onClick={() => onCompleteOrder(activeOrder.id)}
+            className="gap-2"
+            data-testid="button-complete-order"
+          >
+            <Check className="w-4 h-4" />
+            Siparişi Tamamla
+          </Button>
+        ) : (
+          <Button
+            onClick={() => onCloseBill(activeOrder.id)}
+            className="gap-2"
+            data-testid="button-close-bill"
+          >
+            <Check className="w-4 h-4" />
+            Hesabı Kapat
+          </Button>
+        )}
       </DialogFooter>
       
       <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>

@@ -759,6 +759,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/orders/:orderId/close-bill", async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      
+      // Get the order
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        res.status(404).json({ error: "Order not found" });
+        return;
+      }
+
+      // Only allow closing completed orders
+      if (order.status !== 'completed') {
+        res.status(400).json({ error: "Only completed orders can be closed" });
+        return;
+      }
+
+      // Get order items
+      const orderItems = await storage.getOrderItems(orderId);
+
+      // Get active session
+      const session = await storage.getActiveSession();
+      if (!session) {
+        res.status(400).json({ error: "No active session" });
+        return;
+      }
+
+      // Create sale with items
+      const saleItems = orderItems.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.total,
+      }));
+
+      const result = await storage.createSale(session.id, {
+        total: order.total,
+      }, saleItems);
+
+      // Delete the order (this will also cascade delete order items)
+      await storage.deleteOrder(orderId);
+
+      res.json({ success: true, sale: result.sale });
+    } catch (error) {
+      console.error("Error closing bill:", error);
+      res.status(500).json({ error: "Failed to close bill" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

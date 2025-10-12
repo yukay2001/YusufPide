@@ -561,7 +561,7 @@ export class MemStorage implements IStorage {
 
   async getActiveOrderForTable(tableId: string): Promise<Order | null> {
     const orders = Array.from(this.orders.values());
-    const activeOrder = orders.find(o => o.tableId === tableId && o.status === 'active');
+    const activeOrder = orders.find(o => o.tableId === tableId && (o.status === 'active' || o.status === 'completed'));
     return activeOrder || null;
   }
 
