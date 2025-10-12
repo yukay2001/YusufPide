@@ -2,44 +2,55 @@ import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 
 export async function seedInitialData() {
-  // Check if permissions exist, if not create them
-  const existingPermissions = await storage.getPermissions();
-  if (existingPermissions.length === 0) {
-    console.log("Creating default permissions...");
-    const permissionData = [
-      { key: "dashboard", name: "Dashboard" },
-      { key: "sales", name: "Satış" },
-      { key: "orders", name: "Siparişler" },
-      { key: "kitchen", name: "Mutfak" },
-      { key: "products", name: "Ürünler" },
-      { key: "expenses", name: "Gider" },
-      { key: "stock", name: "Stok" },
-      { key: "reports", name: "Rapor" },
-      { key: "users", name: "Kullanıcılar" },
-      { key: "roles", name: "Roller" }
-    ];
-    
-    for (const perm of permissionData) {
+  // Ensure all required permissions exist
+  console.log("Checking permissions...");
+  let permissions = await storage.getPermissions();
+  
+  const requiredPermissions = [
+    { key: "dashboard", name: "Dashboard" },
+    { key: "sales", name: "Satış" },
+    { key: "orders", name: "Siparişler" },
+    { key: "kitchen", name: "Mutfak" },
+    { key: "products", name: "Ürünler" },
+    { key: "expenses", name: "Gider" },
+    { key: "stock", name: "Stok" },
+    { key: "reports", name: "Rapor" },
+    { key: "users", name: "Kullanıcılar" },
+    { key: "roles", name: "Roller" }
+  ];
+  
+  for (const perm of requiredPermissions) {
+    const exists = permissions.find(p => p.key === perm.key);
+    if (!exists) {
+      console.log(`Creating permission: ${perm.name}`);
       await storage.createPermission(perm);
     }
-    console.log("Default permissions created successfully!");
   }
-
-  // Check if roles exist, if not create default roles
-  const existingRoles = await storage.getRoles();
-  let adminRole, garsonRole, mutfakRole;
   
-  if (existingRoles.length === 0) {
-    console.log("Creating default roles...");
-    const permissions = await storage.getPermissions();
-    
-    // Create Admin role with all permissions
+  // Refresh permissions list
+  permissions = await storage.getPermissions();
+  console.log(`${permissions.length} permissions ready`);
+
+  // Ensure all required roles exist
+  console.log("Checking roles...");
+  let roles = await storage.getRoles();
+  let adminRole = roles.find(r => r.name === "Admin");
+  let garsonRole = roles.find(r => r.name === "Garson");
+  let mutfakRole = roles.find(r => r.name === "Mutfak");
+  
+  // Create Admin role if it doesn't exist
+  if (!adminRole) {
+    console.log("Creating Admin role with all permissions...");
     adminRole = await storage.createRole({ name: "Admin" });
     for (const permission of permissions) {
       await storage.assignPermissionToRole(adminRole.id, permission.id);
     }
-    
-    // Create Garson role with limited permissions
+    console.log("Admin role created successfully!");
+  }
+  
+  // Create Garson role if it doesn't exist
+  if (!garsonRole) {
+    console.log("Creating Garson role...");
     garsonRole = await storage.createRole({ name: "Garson" });
     const garsonPermissions = permissions.filter(p => 
       ["dashboard", "sales", "orders", "products", "expenses", "reports"].includes(p.key)
@@ -47,20 +58,21 @@ export async function seedInitialData() {
     for (const permission of garsonPermissions) {
       await storage.assignPermissionToRole(garsonRole.id, permission.id);
     }
-    
-    // Create Mutfak role with kitchen-only permission
+    console.log("Garson role created successfully!");
+  }
+  
+  // Create Mutfak role if it doesn't exist
+  if (!mutfakRole) {
+    console.log("Creating Mutfak role...");
     mutfakRole = await storage.createRole({ name: "Mutfak" });
     const kitchenPermission = permissions.find(p => p.key === "kitchen");
     if (kitchenPermission) {
       await storage.assignPermissionToRole(mutfakRole.id, kitchenPermission.id);
     }
-    
-    console.log("Default roles created successfully!");
-  } else {
-    adminRole = existingRoles.find(r => r.name === "Admin");
-    garsonRole = existingRoles.find(r => r.name === "Garson");
-    mutfakRole = existingRoles.find(r => r.name === "Mutfak");
+    console.log("Mutfak role created successfully!");
   }
+  
+  console.log("All roles ready!");
 
   // Check if session already exists
   const existingSessions = await storage.getBusinessSessions();
@@ -85,11 +97,6 @@ export async function seedInitialData() {
   const existingUsers = await storage.getUsers();
   if (existingUsers.length === 0) {
     console.log("Creating initial admin user...");
-    
-    if (!adminRole) {
-      throw new Error("Admin role not found. Database may not be properly initialized.");
-    }
-    
     const hashedPassword = await bcrypt.hash("admin123", 10);
     await storage.createUser({
       username: "admin",
