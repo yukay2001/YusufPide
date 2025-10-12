@@ -30,13 +30,26 @@ Preferred communication style: Simple, everyday language.
 - Stock deduction logic uses ID-based lookup (updateStockQuantityById) for reliability
 - Improved from name-based to ID-based deduction for better performance and robustness
 
-**Stock Alert & Notification System (Latest):**
+**Stock Alert & Notification System:**
 - Added alert threshold field to stock items - users can set custom low-stock thresholds
 - Real-time notification panel in header shows items below alert threshold
 - Bell icon with badge count displays number of low stock alerts
 - Notification panel auto-refreshes every 30 seconds
 - Stock page shows visual warnings when items fall below threshold
 - GET /api/stock/alerts endpoint filters stock items requiring attention
+
+**Table & Order Management System (Latest):**
+- Restaurant table management for tracking active orders before finalizing as sales
+- Users can add/delete restaurant tables with custom names
+- Each table can have one active order at a time
+- Order dialog allows adding products to active orders with category filtering
+- Real-time order total calculation as items are added/removed
+- Order items can be deleted before finalizing the order
+- Orders can be completed (converted to sales) or cancelled (with confirmation)
+- Table cards show "Boş" (empty) status or active order total
+- Tables with active orders cannot be deleted (protection)
+- Cache invalidation ensures UI stays synchronized after all order operations
+- Stock automatically deducted when order items are added
 
 ## System Architecture
 
@@ -59,8 +72,8 @@ Preferred communication style: Simple, everyday language.
 - Design guidelines emphasize clarity, efficiency, and data legibility
 
 **Component Structure:**
-- Page components in `/pages` (Dashboard, NewSales, Products, Expenses, Stock, Reports)
-- Reusable UI components in `/components` (DashboardStats, DataTable, DateFilter, forms)
+- Page components in `/pages` (Dashboard, NewSales, Products, Expenses, Stock, Reports, Orders)
+- Reusable UI components in `/components` (DashboardStats, DataTable, DateFilter, StockAlertNotifications, forms)
 - Shared utilities in `/lib` (queryClient, utils for className merging)
 
 **Key Design Patterns:**
@@ -123,8 +136,18 @@ Preferred communication style: Simple, everyday language.
 - **Sales:** id, sessionId (FK), date (timestamp), total (decimal)
 - **Sale Items:** id, saleId (FK), productId (FK), productName, quantity, price, total
 - **Expenses:** id, sessionId (FK), date (timestamp), category, amount (decimal)
-- **Stock:** id, name (unique), quantity (integer)
+- **Stock:** id, name (unique), quantity (integer), alertThreshold (integer, optional)
+  - Alert threshold triggers low-stock notifications when quantity falls below threshold
 - **Categories:** id, name (unique)
+- **Restaurant Tables:** id, name (unique), createdAt (timestamp)
+  - Physical restaurant tables that can have active orders
+  - Cannot be deleted if they have an active order
+- **Orders:** id, tableId (FK), status (active/completed), total (decimal), createdAt, updatedAt
+  - One active order per table at a time
+  - Automatically recalculates total when items are added/removed
+- **Order Items:** id, orderId (FK), productId (FK), productName, quantity, price, total
+  - Individual items within an order
+  - Stock automatically deducted when items are added
 
 **Storage Implementation:**
 - In-memory storage (MemStorage class) as fallback/development mode
