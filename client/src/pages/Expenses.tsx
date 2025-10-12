@@ -64,7 +64,7 @@ export default function Expenses() {
   });
 
   // Check if viewing a past session (using Turkish timezone for consistency)
-  const isReadOnly = activeSession?.date !== getTurkishDate();
+  const isReadOnly = activeSession?.date.split('T')[0] !== getTurkishDate();
 
   const columns = [
     { header: "Tarih", accessor: "date", align: "left" as const },
