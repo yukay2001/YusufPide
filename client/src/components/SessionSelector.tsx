@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Calendar } from "lucide-react";
+import { Calendar, AlertCircle, FileDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -9,6 +9,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 interface BusinessSession {
   id: string;
@@ -42,24 +44,66 @@ export default function SessionSelector() {
     },
   });
 
+  const handleDownloadReport = () => {
+    if (!activeSession) {
+      toast({ 
+        title: "Hata", 
+        description: "Rapor indirilebilmesi için bir gün seçmelisiniz",
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    // Open PDF in new tab/download
+    window.open(`/api/sessions/${activeSession.id}/report`, '_blank');
+    toast({ 
+      title: "Rapor indiriliyor", 
+      description: "Günlük rapor PDF olarak hazırlanıyor..." 
+    });
+  };
+
+  // Check if viewing a past session
+  const today = new Date().toISOString().split('T')[0];
+  const isViewingPastSession = activeSession && activeSession.date !== today;
+
   return (
-    <div className="flex items-center gap-2">
-      <Calendar className="w-4 h-4 text-muted-foreground" />
-      <Select
-        value={activeSession?.id || ""}
-        onValueChange={(id) => activateMutation.mutate(id)}
-      >
-        <SelectTrigger className="w-64" data-testid="select-session">
-          <SelectValue placeholder="Gün seçin" />
-        </SelectTrigger>
-        <SelectContent>
-          {sessions.map((session) => (
-            <SelectItem key={session.id} value={session.id}>
-              {session.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Calendar className="w-4 h-4 text-muted-foreground" />
+        <Select
+          value={activeSession?.id || ""}
+          onValueChange={(id) => activateMutation.mutate(id)}
+        >
+          <SelectTrigger className="w-64" data-testid="select-session">
+            <SelectValue placeholder="Gün seçin" />
+          </SelectTrigger>
+          <SelectContent>
+            {sessions.map((session) => (
+              <SelectItem key={session.id} value={session.id}>
+                {session.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={handleDownloadReport}
+          disabled={!activeSession}
+          data-testid="button-download-report"
+        >
+          <FileDown className="w-4 h-4 mr-2" />
+          PDF İndir
+        </Button>
+      </div>
+      {isViewingPastSession && (
+        <Alert variant="default" className="py-2" data-testid="alert-past-session">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            Geçmiş günü görüntülüyorsunuz. Sadece satış ve gider kayıtlarını görüntüleyebilirsiniz.
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
 import { z } from "zod";
 import type { User } from "@shared/schema";
 import bcrypt from "bcryptjs";
+import PDFDocument from "pdfkit";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication
@@ -376,6 +377,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(session);
     } catch (error) {
       res.status(500).json({ error: "Failed to activate session" });
+    }
+  });
+
+  // Generate PDF Report for a session
+  app.get("/api/sessions/:id/report", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get session
+      const session = await storage.getBusinessSession(id);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      // Format session date for filename
+      const sessionDateStr = typeof session.date === 'string' 
+        ? session.date 
+        : new Date(session.date as any).toISOString().split('T')[0];
+
+      // Get sales for this specific session
+      const sessionSales = await storage.getSales(id);
+      
+      // Get sale items for all sales
+      const saleItemsMap = new Map<string, any[]>();
+      for (const sale of sessionSales) {
+        const items = await storage.getSaleItems(sale.id);
+        saleItemsMap.set(sale.id, items);
+      }
+
+      // Get expenses for this specific session
+      const sessionExpenses = await storage.getExpenses(id);
+
+      // Get current stock
+      const stock = await storage.getStock();
+
+      // Calculate totals
+      const totalSales = sessionSales.reduce((sum, sale) => sum + Number(sale.total), 0);
+      const totalExpenses = sessionExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+      const netProfit = totalSales - totalExpenses;
+
+      // Create PDF
+      const doc = new PDFDocument({ margin: 50 });
+      
+      // Set response headers
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=rapor-${sessionDateStr}.pdf`);
+      
+      // Pipe PDF to response
+      doc.pipe(res);
+
+      // Header
+      doc.fontSize(20).text('Pideci Yönetim Paneli', { align: 'center' });
+      doc.fontSize(16).text('Günlük Rapor', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(12).text(`Tarih: ${session.name}`, { align: 'center' });
+      doc.moveDown(2);
+
+      // Summary
+      doc.fontSize(14).text('Özet', { underline: true });
+      doc.moveDown();
+      doc.fontSize(12);
+      doc.text(`Toplam Satış: ${totalSales.toFixed(2)} ₺`);
+      doc.text(`Toplam Gider: ${totalExpenses.toFixed(2)} ₺`);
+      doc.text(`Net Kâr: ${netProfit.toFixed(2)} ₺`);
+      doc.moveDown(2);
+
+      // Sales Details
+      doc.fontSize(14).text('Satış Detayları', { underline: true });
+      doc.moveDown();
+      
+      if (sessionSales.length === 0) {
+        doc.fontSize(12).text('Bu gün için satış kaydı bulunmamaktadır.');
+      } else {
+        doc.fontSize(10);
+        sessionSales.forEach((sale, index) => {
+          doc.text(`Satış #${index + 1} - Toplam: ${Number(sale.total).toFixed(2)} ₺`);
+          const items = saleItemsMap.get(sale.id) || [];
+          items.forEach((item: any) => {
+            doc.text(`  • ${item.productName} x ${item.quantity} = ${Number(item.total).toFixed(2)} ₺`, { indent: 20 });
+          });
+          doc.moveDown(0.5);
+        });
+      }
+      doc.moveDown(2);
+
+      // Expenses
+      doc.fontSize(14).text('Gider Detayları', { underline: true });
+      doc.moveDown();
+      
+      if (sessionExpenses.length === 0) {
+        doc.fontSize(12).text('Bu gün için gider kaydı bulunmamaktadır.');
+      } else {
+        doc.fontSize(10);
+        sessionExpenses.forEach((expense, index) => {
+          doc.text(`${index + 1}. ${expense.category} - ${Number(expense.amount).toFixed(2)} ₺`);
+        });
+      }
+      doc.moveDown(2);
+
+      // Stock Status
+      doc.fontSize(14).text('Stok Durumu', { underline: true });
+      doc.moveDown();
+      doc.fontSize(10);
+      
+      if (stock.length === 0) {
+        doc.text('Stok kaydı bulunmamaktadır.');
+      } else {
+        stock.forEach((item, index) => {
+          const threshold = item.alertThreshold ?? 0;
+          const status = item.quantity <= threshold ? ' (DÜŞÜK STOK!)' : '';
+          doc.text(`${index + 1}. ${item.name}: ${item.quantity} adet${status}`);
+        });
+      }
+
+      // Footer
+      doc.moveDown(3);
+      doc.fontSize(8).text(`Rapor oluşturulma tarihi: ${new Date().toLocaleString('tr-TR')}`, { align: 'center' });
+
+      // Finalize PDF
+      doc.end();
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      res.status(500).json({ error: "PDF oluşturulamadı" });
     }
   });
 
