@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { getTurkishDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -232,17 +231,8 @@ export default function NewSales() {
     total: Number(sale.total).toFixed(2),
   }));
 
-  // Check if viewing a past session (using Turkish timezone for consistency)
-  const sessionDate = activeSession?.date.split('T')[0];
-  const todayDate = getTurkishDate();
-  const isReadOnly = sessionDate !== todayDate;
-  
-  // Debug logging
-  if (activeSession) {
-    console.log('[NewSales] Session date:', sessionDate);
-    console.log('[NewSales] Today date:', todayDate);
-    console.log('[NewSales] Is readonly:', isReadOnly);
-  }
+  // Sales are only readonly if there's no active session
+  const isReadOnly = !activeSession;
 
   return (
     <div className="space-y-6">
@@ -251,7 +241,7 @@ export default function NewSales() {
       {isReadOnly && (
         <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md p-3">
           <p className="text-sm text-amber-800 dark:text-amber-200">
-            Geçmiş gün görüntülüyorsunuz. Sadece satış ve gider kayıtlarını görüntüleyebilirsiniz.
+            Aktif gün bulunmuyor. Satış yapmak için "Gün Başlat" butonuna tıklayın.
           </p>
         </div>
       )}

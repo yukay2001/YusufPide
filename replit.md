@@ -26,18 +26,18 @@ Preferred communication style: Simple, everyday language.
 - **Database:** PostgreSQL, utilizing `@neondatabase/serverless` adapter.
 - **ORM & Schema:** Drizzle ORM for type-safe database operations, with Drizzle Kit for migrations and schema synchronization. Zod schemas are generated from Drizzle schemas for validation.
 - **Data Models:**
-    - **Business Sessions:** Automatic midnight creation using Turkish timezone (Europe/Istanbul), read-only for past dates. Past session detection uses Turkish timezone consistently across backend and frontend.
-    - **Products:** Linkable to stock items, with automatic stock deduction on sale.
-    - - **Sales & Sale Items:** Detailed tracking of transactions. Operations restricted to current day's session (validated using Turkish timezone).
-    - **Expenses:** Categorized expense tracking. Operations restricted to current day's session (validated using Turkish timezone).
+    - **Business Sessions:** Manual day control via Start/End Day buttons. Initial session created on first run. No automatic time-based restrictions.
+    - **Products:** Linkable to stock items, with automatic stock deduction on sale. Always editable regardless of active session.
+    - **Sales & Sale Items:** Detailed tracking of transactions. Can be created/modified when an active session exists.
+    - **Expenses:** Categorized expense tracking. Can be created/modified when an active session exists.
     - **Stock:** Quantity tracking with configurable alert thresholds and real-time notifications.
     - **Categories:** For organizing products and expenses.
     - **Restaurant Tables:** For managing active orders.
-    - **Orders & Order Items:** Two-step completion workflow (complete order, close bill), real-time kitchen display integration, and automatic stock deduction. No date restrictions applied.
+    - **Orders & Order Items:** Two-step completion workflow (complete order, close bill), real-time kitchen display integration, and automatic stock deduction.
     - **Roles & Permissions:** Flexible custom role creation with 10 granular permissions, controlling both UI navigation and API access.
     - **Users:** Assigned to roles, inheriting permissions, with secure password handling.
-- **Data Seeding:** Initial product catalog and an admin user (`admin`/`admin123`) are seeded on first run.
-- **Timezone Handling:** All date comparisons use Turkish timezone (Europe/Istanbul) consistently via shared utility functions (`getTurkishDate()`) in both frontend (`client/src/lib/utils.ts`) and backend (`server/utils.ts`).
+- **Data Seeding:** Initial product catalog, an admin user (`admin`/`admin123`), and an initial business session are created on first run.
+- **Day Control:** Manual start/end day system. Users click "Gün Başlat" to start a new day and "Günü Kapat" to end the current day. Turkish timezone used for session naming.
 
 ## External Dependencies
 

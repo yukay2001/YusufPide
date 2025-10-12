@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { getTurkishDate } from "@/lib/utils";
 import ExpenseForm from "@/components/ExpenseForm";
 import DataTable from "@/components/DataTable";
 import DateFilter from "@/components/DateFilter";
@@ -63,17 +62,8 @@ export default function Expenses() {
     },
   });
 
-  // Check if viewing a past session (using Turkish timezone for consistency)
-  const sessionDate = activeSession?.date.split('T')[0];
-  const todayDate = getTurkishDate();
-  const isReadOnly = sessionDate !== todayDate;
-  
-  // Debug logging
-  if (activeSession) {
-    console.log('[Expenses] Session date:', sessionDate);
-    console.log('[Expenses] Today date:', todayDate);
-    console.log('[Expenses] Is readonly:', isReadOnly);
-  }
+  // Expenses are only readonly if there's no active session
+  const isReadOnly = !activeSession;
 
   const columns = [
     { header: "Tarih", accessor: "date", align: "left" as const },
@@ -126,7 +116,7 @@ export default function Expenses() {
       {isReadOnly && (
         <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md p-3">
           <p className="text-sm text-amber-800 dark:text-amber-200">
-            Geçmiş gün görüntülüyorsunuz. Sadece satış ve gider kayıtlarını görüntüleyebilirsiniz.
+            Aktif gün bulunmuyor. Gider eklemek için "Gün Başlat" butonuna tıklayın.
           </p>
         </div>
       )}

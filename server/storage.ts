@@ -26,6 +26,7 @@ export interface IStorage {
   getActiveSession(): Promise<BusinessSession | null>;
   createBusinessSession(session: InsertBusinessSession): Promise<BusinessSession>;
   setActiveSession(id: string): Promise<BusinessSession | undefined>;
+  deactivateAllSessions(): Promise<void>;
 
   // Categories
   getCategories(): Promise<Category[]>;
@@ -211,6 +212,16 @@ export class MemStorage implements IStorage {
     this.businessSessions.set(id, session);
     
     return session;
+  }
+
+  async deactivateAllSessions(): Promise<void> {
+    // Set all sessions to inactive
+    this.businessSessions.forEach(s => {
+      s.isActive = false;
+    });
+    
+    // Clear active session ID
+    this.activeSessionId = null;
   }
 
   // Categories

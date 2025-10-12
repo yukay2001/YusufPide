@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Calendar, AlertCircle, FileDown } from "lucide-react";
+import { Calendar, FileDown, Play, Square } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -9,7 +9,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 interface BusinessSession {
@@ -44,6 +43,34 @@ export default function SessionSelector() {
     },
   });
 
+  const startDayMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/sessions/start-day");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sessions/active"] });
+      toast({ title: "Yeni gün başlatıldı", description: "Satış ve gider işlemlerine başlayabilirsiniz" });
+    },
+    onError: () => {
+      toast({ title: "Gün başlatılamadı", variant: "destructive" });
+    },
+  });
+
+  const endDayMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/sessions/end-day");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sessions/active"] });
+      toast({ title: "Gün sonlandırıldı", description: "Aktif gün bulunmamaktadır" });
+    },
+    onError: () => {
+      toast({ title: "Gün sonlandırılamadı", variant: "destructive" });
+    },
+  });
+
   const handleDownloadReport = () => {
     if (!activeSession) {
       toast({ 
@@ -61,25 +88,6 @@ export default function SessionSelector() {
       description: "Günlük rapor PDF olarak hazırlanıyor..." 
     });
   };
-
-  // Check if viewing a past session
-  // A session is "past" if there are any sessions with dates AFTER it
-  // This avoids timezone issues by comparing sessions chronologically
-  const isViewingPastSession = activeSession && sessions.some(session => {
-    const currentDate = activeSession.date.split('T')[0];
-    const otherDate = session.date.split('T')[0];
-    const isPast = otherDate > currentDate;
-    if (isPast) {
-      console.log('[SessionSelector] Current session:', currentDate, 'has later session:', otherDate);
-    }
-    return isPast;
-  });
-  
-  // Debug logging
-  if (activeSession) {
-    console.log('[SessionSelector] Active session date:', activeSession.date.split('T')[0]);
-    console.log('[SessionSelector] Is past session:', isViewingPastSession);
-  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -100,6 +108,29 @@ export default function SessionSelector() {
             ))}
           </SelectContent>
         </Select>
+        
+        <Button 
+          variant={activeSession ? "outline" : "default"}
+          size="sm"
+          onClick={() => startDayMutation.mutate()}
+          disabled={startDayMutation.isPending}
+          data-testid="button-start-day"
+        >
+          <Play className="w-4 h-4 mr-2" />
+          Gün Başlat
+        </Button>
+        
+        <Button 
+          variant="outline"
+          size="sm"
+          onClick={() => endDayMutation.mutate()}
+          disabled={!activeSession || endDayMutation.isPending}
+          data-testid="button-end-day"
+        >
+          <Square className="w-4 h-4 mr-2" />
+          Günü Kapat
+        </Button>
+        
         <Button 
           variant="outline" 
           size="sm"
@@ -111,14 +142,6 @@ export default function SessionSelector() {
           PDF İndir
         </Button>
       </div>
-      {isViewingPastSession && (
-        <Alert variant="default" className="py-2" data-testid="alert-past-session">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="text-sm">
-            Geçmiş günü görüntülüyorsunuz. Sadece satış ve gider kayıtlarını görüntüleyebilirsiniz.
-          </AlertDescription>
-        </Alert>
-      )}
     </div>
   );
 }

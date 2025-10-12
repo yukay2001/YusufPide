@@ -3,7 +3,6 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import passport from "./auth";
 import { requireAuth, requireRole } from "./auth";
-import { getTurkishDate } from "./utils";
 import { 
   insertProductSchema, 
   insertSaleSchema, 
@@ -381,6 +380,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual Day Control - Start Day
+  app.post("/api/sessions/start-day", requireAuth, async (req, res) => {
+    try {
+      // Get current date in Turkish timezone
+      const now = new Date();
+      const turkishTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
+      const currentDate = turkishTime.toISOString().split('T')[0];
+      const dayName = turkishTime.toLocaleDateString('tr-TR', { weekday: 'long' });
+      const sessionName = `${dayName} - ${currentDate}`;
+      
+      // Check if session for today already exists
+      const sessions = await storage.getBusinessSessions();
+      const existingSession = sessions.find(s => s.date === currentDate);
+      
+      if (existingSession) {
+        // If it exists, just activate it
+        const activated = await storage.setActiveSession(existingSession.id);
+        return res.json(activated);
+      }
+      
+      // Create new session for today
+      const newSession = await storage.createBusinessSession({
+        date: currentDate,
+        name: sessionName,
+        isActive: true
+      });
+      
+      res.json(newSession);
+    } catch (error) {
+      console.error('Start day error:', error);
+      res.status(500).json({ error: "Gün başlatılamadı" });
+    }
+  });
+
+  // Manual Day Control - End Day
+  app.post("/api/sessions/end-day", requireAuth, async (req, res) => {
+    try {
+      const activeSession = await storage.getActiveSession();
+      
+      if (!activeSession) {
+        return res.status(400).json({ error: "Aktif gün bulunamadı" });
+      }
+      
+      // Deactivate all sessions
+      await storage.deactivateAllSessions();
+      
+      res.json({ success: true, message: "Gün başarıyla sonlandırıldı" });
+    } catch (error) {
+      console.error('End day error:', error);
+      res.status(500).json({ error: "Gün sonlandırılamadı" });
+    }
+  });
+
   // Generate PDF Report for a session
   app.get("/api/sessions/:id/report", requireAuth, async (req, res) => {
     try {
@@ -664,13 +716,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Check if the active session is today's date (using Turkish timezone)
-      const today = getTurkishDate();
-      if (activeSession.date !== today) {
-        res.status(403).json({ error: "Cannot create sales for past sessions. Please select today's session." });
-        return;
-      }
-
       const { items } = createSaleSchema.parse(req.body);
       
       // Fetch products and calculate total using server-side prices
@@ -726,13 +771,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeSession = await storage.getActiveSession();
       if (!activeSession) {
         res.status(400).json({ error: "No active session" });
-        return;
-      }
-
-      // Check if the active session is today's date (using Turkish timezone)
-      const today = getTurkishDate();
-      if (activeSession.date !== today) {
-        res.status(403).json({ error: "Cannot delete sales from past sessions." });
         return;
       }
 
@@ -805,13 +843,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Check if the active session is today's date (using Turkish timezone)
-      const today = getTurkishDate();
-      if (activeSession.date !== today) {
-        res.status(403).json({ error: "Cannot create expenses for past sessions. Please select today's session." });
-        return;
-      }
-
       const expense = insertExpenseSchema.parse(req.body);
       const created = await storage.createExpense(activeSession.id, expense);
       res.json(created);
@@ -829,13 +860,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeSession = await storage.getActiveSession();
       if (!activeSession) {
         res.status(400).json({ error: "No active session" });
-        return;
-      }
-
-      // Check if the active session is today's date (using Turkish timezone)
-      const today = getTurkishDate();
-      if (activeSession.date !== today) {
-        res.status(403).json({ error: "Cannot delete expenses from past sessions." });
         return;
       }
 

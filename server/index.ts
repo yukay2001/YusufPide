@@ -3,7 +3,7 @@ import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedInitialData } from "./seed";
-import { startAutoSessionScheduler } from "./scheduler";
+import { ensureInitialSession } from "./scheduler";
 import passport from "./auth";
 
 const app = express();
@@ -60,8 +60,8 @@ app.use((req, res, next) => {
   // Seed initial product data
   await seedInitialData();
   
-  // Start automatic session scheduler (Turkish timezone)
-  startAutoSessionScheduler();
+  // Ensure initial session exists (manual day control)
+  await ensureInitialSession();
   
   const server = await registerRoutes(app);
 
