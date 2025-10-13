@@ -25,6 +25,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage & Persistence
 - **Database:** PostgreSQL, utilizing `@neondatabase/serverless` adapter.
 - **ORM & Schema:** Drizzle ORM for type-safe database operations, with Drizzle Kit for migrations and schema synchronization. Zod schemas are generated from Drizzle schemas for validation.
+- **Session Store:** Production-ready PostgreSQL session storage using `connect-pg-simple` for proper session management across multiple instances and deployments.
 - **Data Models:**
     - **Business Sessions:** Manual day control via Start/End Day buttons. Initial session created on first run. No automatic time-based restrictions.
     - **Products:** Linkable to stock items, with automatic stock deduction on sale. Always editable regardless of active session.
