@@ -51,6 +51,10 @@ export default function Dashboard() {
       const items: SaleItem[] = [];
       for (const sale of sales) {
         const response = await fetch(`/api/sales/${sale.id}/items`);
+        if (!response.ok) {
+          console.error(`Failed to fetch sale items for ${sale.id}`);
+          continue;
+        }
         const saleItems = await response.json();
         items.push(...saleItems);
       }
