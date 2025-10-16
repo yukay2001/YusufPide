@@ -646,7 +646,8 @@ export class MemStorage implements IStorage {
 
   async getActiveOrders(): Promise<Order[]> {
     const orders = Array.from(this.orders.values());
-    return orders.filter(o => o.status === 'active');
+    // Kitchen should see orders that are active, preparing, or ready (not completed)
+    return orders.filter(o => ['active', 'preparing', 'ready'].includes(o.status));
   }
 
   async createOrder(insertOrder: InsertOrder): Promise<Order> {
