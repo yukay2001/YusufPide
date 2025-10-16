@@ -13,13 +13,15 @@ build({
   target: 'node20',
   format: 'esm',
   outfile: join(__dirname, 'api/_app.bundle.js'),
+  banner: {
+    js: `
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+    `.trim()
+  },
   external: [
-    // Don't bundle node built-ins
-    'fs', 'path', 'crypto', 'stream', 'http', 'https', 'zlib', 'url', 
-    'querystring', 'net', 'tls', 'dns', 'events', 'util', 'buffer',
     // Externalize native dependencies
     'pg-native',
-    'bcryptjs',
     'canvas',
     // Externalize Vite-related packages (not needed in serverless)
     'vite',
