@@ -5,16 +5,6 @@ import { registerRoutes } from "../server/routes";
 import { seedInitialData } from "../server/seed";
 import { ensureInitialSession } from "../server/scheduler";
 import passport from "../server/auth";
-import path from "path";
-import { fileURLToPath } from "url";
-
-// Vercel runtime configuration
-export const config = {
-  runtime: 'nodejs',
-};
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(express.json());
@@ -74,43 +64,47 @@ app.use((req, res, next) => {
 
 // Initialize data (run once)
 let initialized = false;
-async function initialize() {
+let routesRegistered = false;
+
+async function initializeApp() {
   if (!initialized) {
     try {
+      // Register routes first
+      if (!routesRegistered) {
+        await registerRoutes(app);
+        routesRegistered = true;
+      }
+      
+      // Then seed data
       await seedInitialData();
       await ensureInitialSession();
       initialized = true;
+      
+      console.log("✅ App initialized successfully");
     } catch (error) {
-      console.error("Initialization error:", error);
+      console.error("❌ Initialization error:", error);
+      throw error;
     }
   }
 }
 
-// Register routes
-const server = await registerRoutes(app);
+// Initialize on first request
+app.use(async (req, res, next) => {
+  try {
+    await initializeApp();
+    next();
+  } catch (error) {
+    console.error("Failed to initialize:", error);
+    res.status(500).json({ error: "Server initialization failed" });
+  }
+});
 
 // Error handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   const status = err.status || err.statusCode || 500;
   const message = err.message || "Internal Server Error";
-  res.status(status).json({ message });
-});
-
-// Serve static files in production
-if (process.env.NODE_ENV === "production") {
-  const publicPath = path.join(__dirname, "../public");
-  app.use(express.static(publicPath));
-  
-  // Catch-all handler for SPA
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(publicPath, "index.html"));
-  });
-}
-
-// Initialize on first request
-app.use(async (req, res, next) => {
-  await initialize();
-  next();
+  console.error("Error:", message);
+  res.status(status).json({ error: message });
 });
 
 // Export for Vercel serverless
