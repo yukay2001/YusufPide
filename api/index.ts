@@ -8,6 +8,11 @@ import passport from "../server/auth";
 import path from "path";
 import { fileURLToPath } from "url";
 
+// Vercel runtime configuration
+export const config = {
+  runtime: 'nodejs',
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
