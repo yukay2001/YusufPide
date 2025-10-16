@@ -73,6 +73,8 @@ PORT=5000
 
 ## Deploying to Vercel
 
+**Important:** This project uses Node.js 20.x. The `.node-version` file specifies this automatically for Vercel.
+
 ### Option 1: Deploy from GitHub (Recommended)
 
 1. **Push your code to GitHub**
