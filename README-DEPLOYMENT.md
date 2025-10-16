@@ -2,6 +2,31 @@
 
 This guide explains how to deploy the Pideci Management Panel to various platforms, with specific instructions for Vercel, Netlify, Railway, and other hosting providers.
 
+---
+
+## ⚠️ **IMPORTANT: Platform Recommendation**
+
+**🚂 Railway is HIGHLY RECOMMENDED for this project** due to its native TypeScript monorepo support and built-in PostgreSQL.
+
+### Why Railway?
+- ✅ **Native TypeScript Support** - No configuration needed
+- ✅ **Built-in PostgreSQL** - Database included
+- ✅ **Simple Deployment** - Works out of the box
+- ✅ **No Module Issues** - Handles monorepo structure perfectly
+- ⚡ **5-minute setup** - Fastest deployment option
+
+### Why NOT Vercel?
+- ❌ **TypeScript Monorepo Issues** - Complex serverless function setup
+- ❌ **Module Import Errors** - Cannot resolve `../server/` imports in `api/` folder
+- ❌ **External Database Required** - No built-in PostgreSQL
+- ⚠️ **Known Issue:** "Unexpected token" and module resolution errors
+
+**TL;DR:** If you want a hassle-free deployment → Use Railway! 🚂
+
+For detailed Railway setup, see **[README-RAILWAY.md](./README-RAILWAY.md)** ⭐
+
+---
+
 ## Table of Contents
 - [Prerequisites](#prerequisites)
 - [Environment Variables](#environment-variables)
