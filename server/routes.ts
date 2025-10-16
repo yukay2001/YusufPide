@@ -707,7 +707,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const activeSession = await storage.getActiveSession();
       if (!activeSession) {
-        res.status(400).json({ error: "No active session" });
+        // Return empty array instead of error to avoid frontend map() errors
+        res.json([]);
         return;
       }
 
@@ -851,7 +852,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const activeSession = await storage.getActiveSession();
       if (!activeSession) {
-        res.status(400).json({ error: "No active session" });
+        // Return empty array instead of error to avoid frontend map() errors
+        res.json([]);
         return;
       }
 
