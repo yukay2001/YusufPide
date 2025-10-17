@@ -20,6 +20,11 @@ Uygulama Vercel serverless deployment için tamamen hazır:
 
 ### Bug Düzeltmeleri
 - ✅ Kitchen display: getActiveOrders() artık 'active', 'preparing', 'ready' statuslardaki siparişleri gösteriyor
+- ✅ Session/Cookie sorunları düzeltildi (farklı cihazlardan giriş yapamama sorunu)
+  - `trust proxy` eklendi (Vercel reverse proxy için)
+  - `sameSite: 'lax'` cookie ayarı eklendi
+  - `proxy: true` session ayarı eklendi
+- ✅ Aktif session yokken API'lerin boş array döndürmesi sağlandı
 
 ---
 

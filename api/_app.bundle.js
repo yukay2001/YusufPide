@@ -200998,6 +200998,7 @@ function log(message, source = "express") {
 // server/app.ts
 async function createApp() {
   const app = (0, import_express.default)();
+  app.set("trust proxy", 1);
   app.use(import_express.default.json());
   app.use(import_express.default.urlencoded({ extended: false }));
   const PgSession2 = (0, import_connect_pg_simple.default)(import_express_session.default);
@@ -201013,8 +201014,10 @@ async function createApp() {
       cookie: {
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
+        sameSite: "lax",
         maxAge: 24 * 60 * 60 * 1e3
-      }
+      },
+      proxy: true
     })
   );
   app.use(auth_default.initialize());

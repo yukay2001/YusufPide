@@ -7,6 +7,10 @@ import { log } from "./utils";
 
 export async function createApp() {
   const app = express();
+  
+  // Trust proxy - required for Vercel and other reverse proxies
+  app.set('trust proxy', 1);
+  
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
@@ -25,8 +29,10 @@ export async function createApp() {
       cookie: {
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
+        sameSite: 'lax',
         maxAge: 24 * 60 * 60 * 1000
-      }
+      },
+      proxy: true
     })
   );
 
