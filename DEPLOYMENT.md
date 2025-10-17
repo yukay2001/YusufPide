@@ -134,11 +134,6 @@ Deploy tamamlandıktan sonra:
 
 ## 🐛 Sorun Giderme
 
-### ✅ Dynamic Require Hatası (Çözüldü)
-**Hata:** `Error: Dynamic require of "path" is not supported`
-**Çözüm:** esbuild banner'ı ile `createRequire` eklendi
-**Durum:** Düzeltildi, yeniden deploy edin
-
 ### "Cannot find module" hatası
 - `vercel.json` buildCommand doğru mu kontrol edin
 - `api/_app.bundle.js` oluşturuldu mu kontrol edin
