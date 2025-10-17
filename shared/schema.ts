@@ -84,6 +84,15 @@ export const orderItems = pgTable("order_items", {
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull().default("pending"), // pending, preparing, ready
+  cancellationStatus: text("cancellation_status"), // null, requested, confirmed
+});
+
+// System Settings
+export const settings = pgTable("settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(), // e.g., "notification_sound_new_order", "notification_sound_cancel"
+  value: text("value"), // JSON or plain text value
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Roles and Permissions for custom RBAC
@@ -133,6 +142,7 @@ export const insertRoleSchema = createInsertSchema(roles).omit({ id: true, creat
 export const insertPermissionSchema = createInsertSchema(permissions).omit({ id: true });
 export const insertRolePermissionSchema = createInsertSchema(rolePermissions);
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+export const insertSettingSchema = createInsertSchema(settings).omit({ id: true, updatedAt: true });
 
 // Types
 export type BusinessSession = typeof businessSessions.$inferSelect;
@@ -176,3 +186,6 @@ export type InsertPermission = z.infer<typeof insertPermissionSchema>;
 
 export type RolePermission = typeof rolePermissions.$inferSelect;
 export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+
+export type Setting = typeof settings.$inferSelect;
+export type InsertSetting = z.infer<typeof insertSettingSchema>;

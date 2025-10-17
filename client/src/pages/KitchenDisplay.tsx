@@ -26,6 +26,7 @@ interface OrderItem {
   price: string;
   total: string;
   status?: string;
+  cancellationStatus?: string | null;
 }
 
 interface RestaurantTable {
@@ -152,6 +153,20 @@ function OrderCard({
     },
   });
 
+  const confirmCancelItemMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return await apiRequest("POST", `/api/order-items/${itemId}/confirm-cancel`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/kitchen/active-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      toast({ title: "Sipariş iptali onaylandı" });
+    },
+    onError: () => {
+      toast({ title: "İptal onaylanamadı", variant: "destructive" });
+    },
+  });
+
   return (
     <Card
       className={isNew ? "border-2 border-destructive shadow-lg" : ""}
@@ -194,12 +209,27 @@ function OrderCard({
                     <span>Hazır</span>
                   </div>
                 )}
+                {item.cancellationStatus === "requested" && (
+                  <Badge variant="destructive" className="mt-1 text-xs">
+                    İptal Talebi
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" data-testid={`item-quantity-${item.id}`}>
                   {item.quantity}x
                 </Badge>
-                {item.status !== "ready" && (
+                {item.cancellationStatus === "requested" ? (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => confirmCancelItemMutation.mutate(item.id)}
+                    disabled={confirmCancelItemMutation.isPending}
+                    data-testid={`button-confirm-cancel-${item.id}`}
+                  >
+                    İptali Onayla
+                  </Button>
+                ) : item.status !== "ready" && (
                   <Button
                     size="sm"
                     variant="default"

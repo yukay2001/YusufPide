@@ -15,7 +15,8 @@ import {
   insertOrderItemSchema,
   insertUserSchema,
   insertRoleSchema,
-  insertPermissionSchema
+  insertPermissionSchema,
+  insertSettingSchema
 } from "@shared/schema";
 import { z } from "zod";
 import type { User } from "@shared/schema";
@@ -1095,6 +1096,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/orders", requirePermission("orders"), async (req, res) => {
     try {
+      // Check if there is an active session
+      const activeSession = await storage.getActiveSession();
+      if (!activeSession) {
+        res.status(400).json({ error: "Gün başlatılmamış. Lütfen önce günü başlatın." });
+        return;
+      }
+
       const order = insertOrderSchema.parse(req.body);
       const activeOrder = await storage.getActiveOrderForTable(order.tableId);
       if (activeOrder) {
@@ -1306,6 +1314,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error closing bill:", error);
       res.status(500).json({ error: "Failed to close bill" });
+    }
+  });
+
+  // Request cancellation for order item (waiter/order role)
+  app.post("/api/order-items/:id/request-cancel", requirePermission("orders"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const item = await storage.getOrderItem(id);
+      if (!item) {
+        res.status(404).json({ error: "Order item not found" });
+        return;
+      }
+
+      // Update cancellation status to "requested"
+      const updated = await storage.updateOrderItem(id, { cancellationStatus: "requested" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to request cancellation" });
+    }
+  });
+
+  // Confirm cancellation for order item (kitchen role)
+  app.post("/api/order-items/:id/confirm-cancel", requirePermission("kitchen"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const item = await storage.getOrderItem(id);
+      if (!item) {
+        res.status(404).json({ error: "Order item not found" });
+        return;
+      }
+
+      if (item.cancellationStatus !== "requested") {
+        res.status(400).json({ error: "Cancellation not requested for this item" });
+        return;
+      }
+
+      // Update cancellation status to "confirmed" and delete the item
+      await storage.deleteOrderItem(id);
+      res.json({ success: true, message: "Order item cancelled" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to confirm cancellation" });
+    }
+  });
+
+  // Settings
+  app.get("/api/settings", requirePermission("dashboard"), async (_req, res) => {
+    try {
+      const settings = await storage.getSettings();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch settings" });
+    }
+  });
+
+  app.get("/api/settings/:key", requireAuth, async (req, res) => {
+    try {
+      const { key } = req.params;
+      const setting = await storage.getSetting(key);
+      if (!setting) {
+        res.status(404).json({ error: "Setting not found" });
+        return;
+      }
+      res.json(setting);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch setting" });
+    }
+  });
+
+  app.post("/api/settings", requirePermission("dashboard"), async (req, res) => {
+    try {
+      const setting = insertSettingSchema.parse(req.body);
+      const created = await storage.createOrUpdateSetting(setting);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create/update setting" });
+      }
+    }
+  });
+
+  app.delete("/api/settings/:key", requirePermission("dashboard"), async (req, res) => {
+    try {
+      const { key } = req.params;
+      const deleted = await storage.deleteSetting(key);
+      if (!deleted) {
+        res.status(404).json({ error: "Setting not found" });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete setting" });
     }
   });
 

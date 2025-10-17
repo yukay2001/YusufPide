@@ -17,10 +17,11 @@ import ThemeToggle from "@/components/ThemeToggle";
 import SessionSelector from "@/components/SessionSelector";
 import StockAlertNotifications from "@/components/StockAlertNotifications";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon, Utensils, UtensilsCrossed, LogOut, Users as UsersIcon, Shield } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, TrendingDown, Package, FileText, TagIcon, Utensils, UtensilsCrossed, LogOut, Users as UsersIcon, Shield, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
 import Users from "@/pages/Users";
+import Settings from "@/pages/Settings";
 
 function Router() {
   return (
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/stock" component={Stock} />
       <Route path="/reports" component={Reports} />
       <Route path="/users" component={Users} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -70,6 +72,7 @@ function AppContent() {
     { path: "/stock", label: "Stok", icon: Package, permission: "stock" },
     { path: "/reports", label: "Rapor", icon: FileText, permission: "reports" },
     { path: "/users", label: "Kullanıcılar", icon: UsersIcon, permission: "users" },
+    { path: "/settings", label: "Ayarlar", icon: SettingsIcon, permission: "dashboard" },
   ];
 
   const navItems = user

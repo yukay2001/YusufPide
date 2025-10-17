@@ -59,6 +59,7 @@ interface OrderItem {
   price: string;
   total: string;
   status?: string;
+  cancellationStatus?: string | null;
 }
 
 export default function Orders() {
@@ -80,6 +81,10 @@ export default function Orders() {
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
+  });
+
+  const { data: activeSession } = useQuery({
+    queryKey: ["/api/sessions/active"],
   });
 
   const createTableMutation = useMutation({
@@ -126,8 +131,9 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ["/api/kitchen/active-orders"] });
       toast({ title: "Sipariş başlatıldı" });
     },
-    onError: () => {
-      toast({ title: "Sipariş başlatılamadı", variant: "destructive" });
+    onError: (error: any) => {
+      const message = error?.message || error?.error || "Sipariş başlatılamadı";
+      toast({ title: message, variant: "destructive" });
     },
   });
 
@@ -212,6 +218,21 @@ export default function Orders() {
     },
     onError: () => {
       toast({ title: "Hesap kapatılamadı", variant: "destructive" });
+    },
+  });
+
+  const requestCancelItemMutation = useMutation({
+    mutationFn: async ({ itemId, tableId }: { itemId: string; tableId: string }) => {
+      return await apiRequest("POST", `/api/order-items/${itemId}/request-cancel`);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tables", variables.tableId, "active-order"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/kitchen/active-orders"] });
+      toast({ title: "İptal talebi gönderildi - Mutfak onayı bekleniyor" });
+    },
+    onError: () => {
+      toast({ title: "İptal talebi gönderilemedi", variant: "destructive" });
     },
   });
 
@@ -366,6 +387,7 @@ export default function Orders() {
               onCompleteOrder={(orderId) => completeOrderMutation.mutate({ orderId, tableId: selectedTableId })}
               onCancelOrder={(orderId) => cancelOrderMutation.mutate({ orderId, tableId: selectedTableId })}
               onCloseBill={(orderId) => closeBillMutation.mutate({ orderId, tableId: selectedTableId })}
+              onRequestCancel={(itemId) => requestCancelItemMutation.mutate({ itemId, tableId: selectedTableId })}
             />
           )}
         </DialogContent>
@@ -465,6 +487,7 @@ function OrderDetails({
   onCompleteOrder,
   onCancelOrder,
   onCloseBill,
+  onRequestCancel,
 }: {
   tableId: string;
   products: Product[];
@@ -480,6 +503,7 @@ function OrderDetails({
   onCompleteOrder: (orderId: string) => void;
   onCancelOrder: (orderId: string) => void;
   onCloseBill: (orderId: string) => void;
+  onRequestCancel: (itemId: string) => void;
 }) {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   
@@ -589,18 +613,33 @@ function OrderDetails({
                     <div className="text-sm text-muted-foreground">
                       {item.quantity} x {item.price} ₺
                     </div>
+                    {(item as any).cancellationStatus === "requested" && (
+                      <Badge variant="destructive" className="mt-1">İptal Talebi - Mutfak Onayı Bekleniyor</Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="font-bold">{item.total} ₺</div>
                     {activeOrder.status === 'active' && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => onDeleteItem(item.id)}
-                        data-testid={`button-delete-item-${item.id}`}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
+                      <>
+                        {!(item as any).cancellationStatus && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onRequestCancel(item.id)}
+                            data-testid={`button-cancel-item-${item.id}`}
+                          >
+                            İptal Talebi
+                          </Button>
+                        )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => onDeleteItem(item.id)}
+                          data-testid={`button-delete-item-${item.id}`}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>

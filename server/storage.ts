@@ -12,11 +12,12 @@ import {
   type User, type InsertUser,
   type Role, type InsertRole,
   type Permission, type InsertPermission,
-  type RolePermission, type InsertRolePermission
+  type RolePermission, type InsertRolePermission,
+  type Setting, type InsertSetting
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { roles, permissions, rolePermissions, users as usersTable } from "@shared/schema";
+import { roles, permissions, rolePermissions, users as usersTable, settings as settingsTable } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
@@ -125,6 +126,12 @@ export interface IStorage {
   getUserPermissions(userId: string): Promise<Permission[]>;
   assignPermissionToRole(roleId: string, permissionId: string): Promise<RolePermission>;
   removePermissionFromRole(roleId: string, permissionId: string): Promise<boolean>;
+
+  // Settings
+  getSettings(): Promise<Setting[]>;
+  getSetting(key: string): Promise<Setting | undefined>;
+  createOrUpdateSetting(setting: InsertSetting): Promise<Setting>;
+  deleteSetting(key: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -702,7 +709,9 @@ export class MemStorage implements IStorage {
       productName: insertItem.productName,
       quantity: insertItem.quantity,
       price: insertItem.price,
-      total: insertItem.total
+      total: insertItem.total,
+      status: insertItem.status || "pending",
+      cancellationStatus: insertItem.cancellationStatus || null
     };
     this.orderItems.set(id, item);
     
@@ -874,6 +883,35 @@ export class MemStorage implements IStorage {
         eq(rolePermissions.permissionId, permissionId)
       ))
       .returning();
+    return result.length > 0;
+  }
+
+  // Settings - using database
+  async getSettings(): Promise<Setting[]> {
+    return await db.select().from(settingsTable);
+  }
+
+  async getSetting(key: string): Promise<Setting | undefined> {
+    const result = await db.select().from(settingsTable).where(eq(settingsTable.key, key));
+    return result[0];
+  }
+
+  async createOrUpdateSetting(setting: InsertSetting): Promise<Setting> {
+    const existing = await this.getSetting(setting.key);
+    if (existing) {
+      const result = await db.update(settingsTable)
+        .set({ value: setting.value, updatedAt: new Date() })
+        .where(eq(settingsTable.key, setting.key))
+        .returning();
+      return result[0];
+    } else {
+      const result = await db.insert(settingsTable).values(setting).returning();
+      return result[0];
+    }
+  }
+
+  async deleteSetting(key: string): Promise<boolean> {
+    const result = await db.delete(settingsTable).where(eq(settingsTable.key, key)).returning();
     return result.length > 0;
   }
 }
