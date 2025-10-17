@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import passport from "./auth";
-import { requireAuth, requireRole } from "./auth";
+import { requireAuth, requireRole, requirePermission } from "./auth";
 import { 
   insertProductSchema, 
   insertSaleSchema, 
@@ -334,7 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Business Sessions
-  app.get("/api/sessions", async (_req, res) => {
+  app.get("/api/sessions", requirePermission("dashboard"), async (_req, res) => {
     try {
       const sessions = await storage.getBusinessSessions();
       res.json(sessions);
@@ -343,7 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/sessions/active", async (_req, res) => {
+  app.get("/api/sessions/active", requireAuth, async (_req, res) => {
     try {
       const session = await storage.getActiveSession();
       res.json(session);
@@ -352,7 +352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/sessions", async (req, res) => {
+  app.post("/api/sessions", requirePermission("dashboard"), async (req, res) => {
     try {
       const session = insertBusinessSessionSchema.parse(req.body);
       const created = await storage.createBusinessSession(session);
@@ -366,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/sessions/:id/activate", async (req, res) => {
+  app.post("/api/sessions/:id/activate", requirePermission("dashboard"), async (req, res) => {
     try {
       const { id } = req.params;
       const session = await storage.setActiveSession(id);
@@ -381,7 +381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Manual Day Control - Start Day
-  app.post("/api/sessions/start-day", requireAuth, async (req, res) => {
+  app.post("/api/sessions/start-day", requirePermission("dashboard"), async (req, res) => {
     try {
       // Get current date in Turkish timezone
       const now = new Date();
@@ -415,7 +415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Manual Day Control - End Day
-  app.post("/api/sessions/end-day", requireAuth, async (req, res) => {
+  app.post("/api/sessions/end-day", requirePermission("dashboard"), async (req, res) => {
     try {
       const activeSession = await storage.getActiveSession();
       
@@ -434,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a business session
-  app.delete("/api/sessions/:id", requireAuth, async (req, res) => {
+  app.delete("/api/sessions/:id", requirePermission("dashboard"), async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -459,7 +459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate PDF Report for a session
-  app.get("/api/sessions/:id/report", requireAuth, async (req, res) => {
+  app.get("/api/sessions/:id/report", requirePermission("reports"), async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -646,7 +646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Products
-  app.get("/api/products", async (_req, res) => {
+  app.get("/api/products", requirePermission("products"), async (_req, res) => {
     try {
       const products = await storage.getProducts();
       res.json(products);
@@ -655,7 +655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/products", async (req, res) => {
+  app.post("/api/products", requirePermission("products"), async (req, res) => {
     try {
       const product = insertProductSchema.parse(req.body);
       const created = await storage.createProduct(product);
@@ -669,7 +669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/products/:id", async (req, res) => {
+  app.put("/api/products/:id", requirePermission("products"), async (req, res) => {
     try {
       const { id } = req.params;
       const update = insertProductSchema.partial().parse(req.body);
@@ -688,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/products/:id", async (req, res) => {
+  app.delete("/api/products/:id", requirePermission("products"), async (req, res) => {
     try {
       const { id } = req.params;
       const deleted = await storage.deleteProduct(id);
@@ -703,7 +703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sales
-  app.get("/api/sales", async (req, res) => {
+  app.get("/api/sales", requirePermission("sales"), async (req, res) => {
     try {
       const activeSession = await storage.getActiveSession();
       if (!activeSession) {
@@ -724,7 +724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/sales/:id/items", async (req, res) => {
+  app.get("/api/sales/:id/items", requirePermission("sales"), async (req, res) => {
     try {
       const { id } = req.params;
       const items = await storage.getSaleItems(id);
@@ -741,7 +741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }))
   });
 
-  app.post("/api/sales", async (req, res) => {
+  app.post("/api/sales", requirePermission("sales"), async (req, res) => {
     try {
       const activeSession = await storage.getActiveSession();
       if (!activeSession) {
@@ -799,7 +799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/sales/:id", async (req, res) => {
+  app.delete("/api/sales/:id", requirePermission("sales"), async (req, res) => {
     try {
       const activeSession = await storage.getActiveSession();
       if (!activeSession) {
@@ -832,7 +832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/reports/sales-statistics", async (_req, res) => {
+  app.get("/api/reports/sales-statistics", requirePermission("reports"), async (_req, res) => {
     try {
       const activeSession = await storage.getActiveSession();
       if (!activeSession) {
@@ -848,7 +848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Expenses
-  app.get("/api/expenses", async (req, res) => {
+  app.get("/api/expenses", requirePermission("expenses"), async (req, res) => {
     try {
       const activeSession = await storage.getActiveSession();
       if (!activeSession) {
@@ -869,7 +869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/expenses", async (req, res) => {
+  app.post("/api/expenses", requirePermission("expenses"), async (req, res) => {
     try {
       const activeSession = await storage.getActiveSession();
       if (!activeSession) {
@@ -889,7 +889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/expenses/:id", async (req, res) => {
+  app.delete("/api/expenses/:id", requirePermission("expenses"), async (req, res) => {
     try {
       const activeSession = await storage.getActiveSession();
       if (!activeSession) {
@@ -923,7 +923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stock
-  app.get("/api/stock", async (_req, res) => {
+  app.get("/api/stock", requirePermission("stock"), async (_req, res) => {
     try {
       const stock = await storage.getStock();
       res.json(stock);
@@ -932,7 +932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/stock", async (req, res) => {
+  app.post("/api/stock", requirePermission("stock"), async (req, res) => {
     try {
       const stockItem = insertStockSchema.parse(req.body);
       const created = await storage.createOrUpdateStock(stockItem);
@@ -946,7 +946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/stock/:id", async (req, res) => {
+  app.put("/api/stock/:id", requirePermission("stock"), async (req, res) => {
     try {
       const { id } = req.params;
       const update = insertStockSchema.parse(req.body);
@@ -972,7 +972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/stock/:id", async (req, res) => {
+  app.delete("/api/stock/:id", requirePermission("stock"), async (req, res) => {
     try {
       const { id } = req.params;
       const deleted = await storage.deleteStock(id);
@@ -986,7 +986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/stock/alerts", async (_req, res) => {
+  app.get("/api/stock/alerts", requirePermission("stock"), async (_req, res) => {
     try {
       const stock = await storage.getStock();
       const alerts = stock.filter(item => {
@@ -1059,7 +1059,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Orders
-  app.get("/api/orders", async (req, res) => {
+  app.get("/api/orders", requirePermission("orders"), async (req, res) => {
     try {
       const { tableId } = req.query;
       const orders = await storage.getOrders(tableId as string | undefined);
@@ -1069,7 +1069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/orders/:id", async (req, res) => {
+  app.get("/api/orders/:id", requirePermission("orders"), async (req, res) => {
     try {
       const { id } = req.params;
       const order = await storage.getOrder(id);
@@ -1093,7 +1093,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/orders", async (req, res) => {
+  app.post("/api/orders", requirePermission("orders"), async (req, res) => {
     try {
       const order = insertOrderSchema.parse(req.body);
       const activeOrder = await storage.getActiveOrderForTable(order.tableId);
@@ -1112,7 +1112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/orders/:id", async (req, res) => {
+  app.put("/api/orders/:id", requirePermission("orders"), async (req, res) => {
     try {
       const { id } = req.params;
       const update = insertOrderSchema.partial().parse(req.body);
@@ -1131,7 +1131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/orders/:id", async (req, res) => {
+  app.delete("/api/orders/:id", requirePermission("orders"), async (req, res) => {
     try {
       const { id } = req.params;
       const deleted = await storage.deleteOrder(id);
@@ -1146,7 +1146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Order Items
-  app.get("/api/orders/:orderId/items", async (req, res) => {
+  app.get("/api/orders/:orderId/items", requirePermission("orders"), async (req, res) => {
     try {
       const { orderId } = req.params;
       const items = await storage.getOrderItems(orderId);
@@ -1156,7 +1156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/orders/:orderId/items", async (req, res) => {
+  app.post("/api/orders/:orderId/items", requirePermission("orders"), async (req, res) => {
     try {
       const { orderId } = req.params;
       // Only validate productId and quantity from request
@@ -1239,7 +1239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/kitchen/active-orders", async (_req, res) => {
+  app.get("/api/kitchen/active-orders", requirePermission("kitchen", "orders"), async (_req, res) => {
     try {
       const orders = await storage.getActiveOrders();
       const ordersWithDetails = await Promise.all(
@@ -1259,7 +1259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/orders/:orderId/close-bill", async (req, res) => {
+  app.post("/api/orders/:orderId/close-bill", requirePermission("orders"), async (req, res) => {
     try {
       const { orderId } = req.params;
       

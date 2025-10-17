@@ -102,8 +102,8 @@ function AppContent() {
               )}
             </div>
             <div className="flex items-center gap-4 flex-wrap">
-              {user?.roleName !== "Mutfak" && <SessionSelector />}
-              {user?.roleName !== "Mutfak" && <StockAlertNotifications />}
+              {user?.permissions.includes("dashboard") && <SessionSelector />}
+              {user?.permissions.includes("stock") && <StockAlertNotifications />}
               <ThemeToggle />
               <Button
                 variant="outline"

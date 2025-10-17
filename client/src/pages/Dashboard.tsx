@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import DashboardStats from "@/components/DashboardStats";
 import StockAlert from "@/components/StockAlert";
+import { useAuth } from "@/contexts/AuthContext";
 import { DollarSign, TrendingDown, TrendingUp, Package } from "lucide-react";
 
 interface Sale {
@@ -32,16 +33,24 @@ interface StockItem {
 }
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const hasSalesPermission = user?.permissions.includes("sales");
+  const hasExpensesPermission = user?.permissions.includes("expenses");
+  const hasStockPermission = user?.permissions.includes("stock");
+
   const { data: sales = [] } = useQuery<Sale[]>({
     queryKey: ["/api/sales"],
+    enabled: hasSalesPermission,
   });
 
   const { data: expenses = [] } = useQuery<Expense[]>({
     queryKey: ["/api/expenses"],
+    enabled: hasExpensesPermission,
   });
 
   const { data: stock = [] } = useQuery<StockItem[]>({
     queryKey: ["/api/stock"],
+    enabled: hasStockPermission,
   });
 
   // Fetch all sale items to calculate top product
@@ -70,20 +79,32 @@ export default function Dashboard() {
   });
   const topProduct = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
 
-  const stats = [
-    { label: "Toplam Satış", value: `${totalSales.toFixed(2)} ₺`, icon: DollarSign, trend: "up" as const },
-    { label: "Toplam Gider", value: `${totalExpenses.toFixed(2)} ₺`, icon: TrendingDown, trend: "down" as const },
-    { label: "Net Kâr", value: `${netProfit.toFixed(2)} ₺`, icon: TrendingUp, trend: netProfit >= 0 ? "up" as const : "down" as const },
-    { label: "En Çok Satılan", value: topProduct, icon: Package },
-  ];
+  // Build stats array based on permissions
+  const stats = [];
+  if (hasSalesPermission) {
+    stats.push({ label: "Toplam Satış", value: `${totalSales.toFixed(2)} ₺`, icon: DollarSign, trend: "up" as const });
+  }
+  if (hasExpensesPermission) {
+    stats.push({ label: "Toplam Gider", value: `${totalExpenses.toFixed(2)} ₺`, icon: TrendingDown, trend: "down" as const });
+  }
+  if (hasSalesPermission && hasExpensesPermission) {
+    stats.push({ label: "Net Kâr", value: `${netProfit.toFixed(2)} ₺`, icon: TrendingUp, trend: netProfit >= 0 ? "up" as const : "down" as const });
+  }
+  if (hasSalesPermission) {
+    stats.push({ label: "En Çok Satılan", value: topProduct, icon: Package });
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-6">Genel Bakış</h2>
-        <DashboardStats stats={stats} />
+        {stats.length > 0 ? (
+          <DashboardStats stats={stats} />
+        ) : (
+          <p className="text-muted-foreground">Bu sayfayı görüntülemek için gerekli izinlere sahip değilsiniz.</p>
+        )}
       </div>
-      <StockAlert items={stock} />
+      {hasStockPermission && <StockAlert items={stock} />}
     </div>
   );
 }
