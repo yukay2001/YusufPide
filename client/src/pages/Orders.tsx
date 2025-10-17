@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, ShoppingCart, X, Check } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, X, Check, CheckCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -58,6 +58,7 @@ interface OrderItem {
   quantity: number;
   price: string;
   total: string;
+  status?: string;
 }
 
 export default function Orders() {
@@ -218,39 +219,98 @@ export default function Orders() {
     ? products.filter(p => p.categoryId === selectedCategoryId)
     : products;
 
+  // Fetch all active orders with items to show ready items
+  const { data: allActiveOrders = [] } = useQuery<Array<{
+    order: Order;
+    table: RestaurantTable;
+    items: OrderItem[];
+  }>>({
+    queryKey: ["/api/kitchen/active-orders"],
+    refetchInterval: 2000, // Refresh every 2 seconds to sync with kitchen
+  });
+
+  // Extract ready items grouped by table
+  const readyItemsByTable = allActiveOrders.reduce((acc, { table, items }) => {
+    const readyItems = items.filter(item => item.status === "ready");
+    if (readyItems.length > 0) {
+      acc.push({ table, items: readyItems });
+    }
+    return acc;
+  }, [] as Array<{ table: RestaurantTable; items: OrderItem[] }>);
+
   const handleAddTable = () => {
     if (!newTableName.trim()) return;
     createTableMutation.mutate(newTableName);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold" data-testid="text-orders-title">Sipariş Yönetimi</h2>
-          <p className="text-muted-foreground">Masa siparişlerini yönetin</p>
+    <div className="flex gap-6 h-full">
+      {/* Main content */}
+      <div className="flex-1 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold" data-testid="text-orders-title">Sipariş Yönetimi</h2>
+            <p className="text-muted-foreground">Masa siparişlerini yönetin</p>
+          </div>
+          <Button
+            onClick={() => setAddTableDialogOpen(true)}
+            className="gap-2"
+            data-testid="button-add-table"
+          >
+            <Plus className="w-4 h-4" />
+            Masa Ekle
+          </Button>
         </div>
-        <Button
-          onClick={() => setAddTableDialogOpen(true)}
-          className="gap-2"
-          data-testid="button-add-table"
-        >
-          <Plus className="w-4 h-4" />
-          Masa Ekle
-        </Button>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {tables.map((table) => (
+            <TableCard
+              key={table.id}
+              table={table}
+              onDelete={() => deleteTableMutation.mutate(table.id)}
+              onSelect={() => setSelectedTableId(table.id)}
+              onStartOrder={() => createOrderMutation.mutate(table.id)}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tables.map((table) => (
-          <TableCard
-            key={table.id}
-            table={table}
-            onDelete={() => deleteTableMutation.mutate(table.id)}
-            onSelect={() => setSelectedTableId(table.id)}
-            onStartOrder={() => createOrderMutation.mutate(table.id)}
-          />
-        ))}
-      </div>
+      {/* Ready items side panel */}
+      {readyItemsByTable.length > 0 && (
+        <div className="w-80 space-y-4">
+          <Card data-testid="card-ready-items">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                Hazır Ürünler
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+              {readyItemsByTable.map(({ table, items }) => (
+                <Card key={table.id} className="bg-muted" data-testid={`ready-items-table-${table.id}`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold">{table.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    {items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between text-sm"
+                        data-testid={`ready-item-${item.id}`}
+                      >
+                        <span>{item.productName}</span>
+                        <Badge variant="secondary" className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100">
+                          {item.quantity}x
+                        </Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Dialog open={addTableDialogOpen} onOpenChange={setAddTableDialogOpen}>
         <DialogContent>
