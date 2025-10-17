@@ -34,7 +34,8 @@ Preferred communication style: Simple, everyday language.
     - **Stock:** Quantity tracking with configurable alert thresholds and real-time notifications.
     - **Categories:** For organizing products and expenses.
     - **Restaurant Tables:** For managing active orders.
-    - **Orders & Order Items:** Two-step completion workflow (complete order, close bill), real-time kitchen display integration, automatic stock deduction, and kitchen-to-waiter item status coordination. Order items have status tracking (pending/preparing/ready) allowing kitchen staff to mark items ready and waiters to see ready status in Orders panel.
+    - **Orders & Order Items:** Two-step completion workflow (complete order, close bill), real-time kitchen display integration, automatic stock deduction, and kitchen-to-waiter item status coordination. Order items have status tracking (pending/preparing/ready) allowing kitchen staff to mark items ready and waiters to see ready status in Orders panel. Cancellation workflow: waiters request cancellation (sets cancellationStatus to "requested"), kitchen staff confirms (deletes item and returns stock).
+    - **Settings:** Key-value store for system configuration including notification sounds, theme customization (colors, logo), notification preferences, and report preferences. Supports file uploads for sound files and logos stored in `/public/uploads`.
     - **Roles & Permissions:** Flexible custom role creation with 10 granular permissions, controlling both UI navigation and API access.
     - **Users:** Assigned to roles, inheriting permissions, with secure password handling.
 - **Data Seeding:** Initial product catalog, an admin user (`admin`/`admin123`), and an initial business session are created on first run.
@@ -47,5 +48,35 @@ Preferred communication style: Simple, everyday language.
 - **Form & Validation:** React Hook Form, Zod, @hookform/resolvers, drizzle-zod.
 - **Date & Time:** date-fns.
 - **Database & ORM:** @neondatabase/serverless, drizzle-orm, drizzle-kit.
+- **File Upload:** Multer for handling multipart/form-data file uploads.
 - **Development Tools:** tsx, esbuild.
 - **Styling:** Tailwind CSS, PostCSS, Autoprefixer.
+
+## Recent Updates (October 2025)
+
+### Order Cancellation Workflow
+- Waiter-initiated cancellation requests via Orders page
+- Kitchen confirmation required before item deletion
+- `cancellationStatus` field tracks state: null | "requested" | "confirmed"
+- Stock automatically restored upon confirmed cancellation
+
+### Sound Notification System
+- Configurable sound files for different events (new order, cancellation request, order ready)
+- File upload support for custom notification sounds (MP3, WAV, OGG, M4A)
+- Sounds stored in `/public/uploads/sounds` directory
+- HTML5 Audio API integration via `client/src/lib/notifications.ts`
+
+### Settings Management
+- Comprehensive settings page with tabbed interface (Sesler, Tema, Bildirimler, Raporlar)
+- **Sound Settings:** Upload custom notification sounds or use URLs
+- **Theme Customization:** Color picker for primary/secondary colors, logo upload
+- **Notification Preferences:** Toggle sound notifications, stock alerts, order notifications
+- **Report Preferences:** Select format (PDF/Excel/CSV), include charts/details options
+- Settings persisted in database with optimistic cache updates to prevent race conditions
+- File validation: sounds max 5MB, logos max 2MB
+
+### File Upload System
+- Backend endpoints: `/api/upload/sound` and `/api/upload/logo`
+- Multer middleware with file type and size validation
+- Static file serving at `/uploads` path for uploaded assets
+- Automatic unique filename generation to prevent conflicts
