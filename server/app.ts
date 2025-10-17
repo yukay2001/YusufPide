@@ -4,6 +4,12 @@ import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import passport from "./auth";
 import { log } from "./utils";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export async function createApp() {
   const app = express();
@@ -13,6 +19,9 @@ export async function createApp() {
   
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
+
+  // Serve uploaded files
+  app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
   // PostgreSQL session store
   const PgSession = connectPgSimple(session);

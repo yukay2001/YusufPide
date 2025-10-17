@@ -22,6 +22,64 @@ import { z } from "zod";
 import type { User } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import PDFDocument from "pdfkit";
+import multer from "multer";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Configure multer for file uploads
+const soundStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, path.join(__dirname, "../public/uploads/sounds"));
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const logoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, path.join(__dirname, "../public/uploads/logos"));
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const uploadSound = multer({
+  storage: soundStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = /mp3|wav|ogg|m4a/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error("Sadece ses dosyaları yüklenebilir (mp3, wav, ogg, m4a)"));
+    }
+  }
+});
+
+const uploadLogo = multer({
+  storage: logoStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = /png|jpg|jpeg|svg|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error("Sadece görsel dosyaları yüklenebilir (png, jpg, jpeg, svg, webp)"));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication
@@ -1407,6 +1465,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete setting" });
+    }
+  });
+
+  // File uploads
+  app.post("/api/upload/sound", requirePermission("dashboard"), uploadSound.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "Dosya yüklenmedi" });
+      }
+      const filePath = `/uploads/sounds/${req.file.filename}`;
+      res.json({ path: filePath, filename: req.file.filename });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Dosya yüklenemedi" });
+    }
+  });
+
+  app.post("/api/upload/logo", requirePermission("dashboard"), uploadLogo.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "Dosya yüklenmedi" });
+      }
+      const filePath = `/uploads/logos/${req.file.filename}`;
+      res.json({ path: filePath, filename: req.file.filename });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Dosya yüklenemedi" });
     }
   });
 
