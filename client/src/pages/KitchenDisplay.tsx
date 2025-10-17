@@ -1,9 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { UtensilsCrossed, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { UtensilsCrossed, Clock, CheckCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 
 interface Order {
   id: string;
@@ -22,6 +25,7 @@ interface OrderItem {
   quantity: number;
   price: string;
   total: string;
+  status?: string;
 }
 
 interface RestaurantTable {
@@ -132,6 +136,22 @@ function OrderCard({
   items: OrderItem[];
   isNew: boolean;
 }) {
+  const { toast } = useToast();
+
+  const markItemReadyMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return await apiRequest("PUT", `/api/order-items/${itemId}`, { status: "ready" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/kitchen/active-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      toast({ title: "Ürün hazır olarak işaretlendi" });
+    },
+    onError: () => {
+      toast({ title: "İşlem başarısız", variant: "destructive" });
+    },
+  });
+
   return (
     <Card
       className={isNew ? "border-2 border-destructive shadow-lg" : ""}
@@ -163,15 +183,35 @@ function OrderCard({
           {items.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between p-2 bg-muted rounded-md"
+              className="flex items-center justify-between gap-2 p-2 bg-muted rounded-md"
               data-testid={`order-item-${item.id}`}
             >
               <div className="flex-1">
                 <div className="font-medium text-sm">{item.productName}</div>
+                {item.status === "ready" && (
+                  <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 mt-1">
+                    <CheckCircle className="w-3 h-3" />
+                    <span>Hazır</span>
+                  </div>
+                )}
               </div>
-              <Badge variant="secondary" data-testid={`item-quantity-${item.id}`}>
-                {item.quantity}x
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" data-testid={`item-quantity-${item.id}`}>
+                  {item.quantity}x
+                </Badge>
+                {item.status !== "ready" && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => markItemReadyMutation.mutate(item.id)}
+                    disabled={markItemReadyMutation.isPending}
+                    data-testid={`button-mark-ready-${item.id}`}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Hazır
+                  </Button>
+                )}
+              </div>
             </div>
           ))}
         </div>
