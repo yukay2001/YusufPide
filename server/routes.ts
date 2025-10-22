@@ -288,6 +288,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/role-permissions", requireRole("Admin"), async (_req, res) => {
+    try {
+      const rolePermissions = await storage.getAllRolePermissions();
+      res.json(rolePermissions);
+    } catch (error) {
+      res.status(500).json({ error: "Rol izinleri yüklenemedi" });
+    }
+  });
+
   app.post("/api/permissions", requireRole("Admin"), async (req, res) => {
     try {
       const permissionData = insertPermissionSchema.parse(req.body);

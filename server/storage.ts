@@ -122,6 +122,7 @@ export interface IStorage {
   deletePermission(id: string): Promise<boolean>;
 
   // Role Permissions
+  getAllRolePermissions(): Promise<RolePermission[]>;
   getRolePermissions(roleId: string): Promise<RolePermission[]>;
   getUserPermissions(userId: string): Promise<Permission[]>;
   assignPermissionToRole(roleId: string, permissionId: string): Promise<RolePermission>;
@@ -854,6 +855,10 @@ export class MemStorage implements IStorage {
   }
 
   // Role Permissions - using database
+  async getAllRolePermissions(): Promise<RolePermission[]> {
+    return await db.select().from(rolePermissions);
+  }
+
   async getRolePermissions(roleId: string): Promise<RolePermission[]> {
     return await db.select().from(rolePermissions).where(eq(rolePermissions.roleId, roleId));
   }
